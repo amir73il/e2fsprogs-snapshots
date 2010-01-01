@@ -231,6 +231,11 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
+	/* never release orphan inodes when scanning volume with next3 snapshots -goldor */
+	if ((fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+		 fs->super->s_last_snapshot != 0)
+		return 0;
+
 	if ((ino = fs->super->s_last_orphan) == 0)
 		return 0;
 
@@ -424,6 +429,88 @@ cleanup:
 		ext2fs_free_mem(&dind_buf);
 
  }
+
+/*
+ * Check the exclude inode to make sure it is sane.  We check both for
+ * the case where exclude bitmal is not enabled (in which case the
+ * exclude inode should be cleared) as well as the case where exclude
+ * bitmap is enabled.
+ */
+void check_exclude_inode(e2fsck_t ctx)
+{
+	ext2_filsys fs = ctx->fs;
+	struct ext2_inode inode;
+	struct problem_context	pctx;
+	int		i;
+	blk_t		blk;
+	errcode_t	retval;
+
+	clear_problem_context(&pctx);
+
+	/* Read the exclude inode */
+	pctx.ino = EXT2_EXCLUDE_INO;
+	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);
+	if (retval) {
+		if (fs->super->s_feature_compat &
+		    NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
+			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
+		return;
+	}
+
+	/*
+	 * If the exclude inode feature isn't set, check to make sure
+	 * the exclude inode is cleared; then we're done.
+	 */
+	if (!(fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+		for (i=0; i < EXT2_N_BLOCKS; i++) {
+			if (inode.i_block[i])
+				break;
+		}
+		if ((i < EXT2_N_BLOCKS) &&
+		    fix_problem(ctx, PR_0_CLEAR_EXCLUDE_INODE, &pctx)) {
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
+					   "clear_exclude");
+		}
+		return;
+	}
+
+	/*
+	 * The exclude inode feature is enabled; check to make sure the
+	 * only block in use is the double indirect block
+	 */
+	blk = inode.i_block[EXT2_DIND_BLOCK];
+	for (i=0; i < EXT2_N_BLOCKS; i++) {
+		if (i != EXT2_DIND_BLOCK && inode.i_block[i])
+			break;
+	}
+	if ((i < EXT2_N_BLOCKS) || !blk || !inode.i_links_count ||
+	    !(inode.i_mode & LINUX_S_IFREG) ||
+	    (blk < fs->super->s_first_data_block ||
+	     blk >= fs->super->s_blocks_count)) {
+		if (fix_problem(ctx, PR_0_EXCLUDE_INODE_INVALID, &pctx)) {
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
+					   "clear_exclude");
+			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
+		}
+	}	
+	else if (!(fs->super->s_feature_ro_compat & 
+		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
+		 fs->super->s_last_snapshot == 0) {
+		/* force check of exclude inode */
+		clear_problem_context(&pctx);
+		pctx.errcode = ext2fs_create_exclude_inode(fs);
+		if (pctx.errcode &&
+			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
+					   "clear_exclude");
+			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
+		}
+	}
+}
 
 /*
  * This function checks the dirhash signed/unsigned hint if necessary.

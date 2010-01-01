@@ -207,6 +207,20 @@ static void list_desc (ext2_filsys fs)
 		diff = ext2fs_inode_bitmap_loc(fs, i) - first_block;
 		if (diff >= 0)
 			printf(" (+%ld)", diff);
+		if (fs->group_desc[i].bg_exclude_bitmap) {
+			fputs(_(", Exclude bitmap at "), stdout);
+			print_number(fs->group_desc[i].bg_exclude_bitmap);
+			diff = fs->group_desc[i].bg_exclude_bitmap - first_block;
+			if (diff >= 0 && diff <= fs->super->s_blocks_per_group)
+				printf(" (+%ld)", diff);
+		}
+		if (fs->group_desc[i].bg_cow_bitmap) {
+			fputs(_(", COW bitmap at "), stdout);
+			print_number(fs->group_desc[i].bg_cow_bitmap);
+			diff = fs->group_desc[i].bg_cow_bitmap - first_block;
+			if (diff >= 0 && diff <= fs->super->s_blocks_per_group)
+				printf(" (+%ld)", diff);
+		}
 		fputs(_("\n  Inode table at "), stdout);
 		print_range(ext2fs_inode_table_loc(fs, i),
 			    ext2fs_inode_table_loc(fs, i) +

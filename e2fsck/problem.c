@@ -332,6 +332,16 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Resize @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
 
+	/* Exclude not enabled, but exclude inode is non-zero */
+	{ PR_0_CLEAR_EXCLUDE_INODE,
+	  N_("Exclude_@i not enabled, but the exclude @i is non-zero.  "),
+	  PROMPT_CLEAR, 0 },
+
+	/* Exclude inode invalid */
+	{ PR_0_EXCLUDE_INODE_INVALID,
+	  N_("Exclude @i not valid.  "),
+	  PROMPT_RECREATE, 0 },
+
 	/* Last mount time is in the future */
 	{ PR_0_FUTURE_SB_LAST_MOUNT,
 	  N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
@@ -799,6 +809,11 @@ static struct e2fsck_problem problem_table[] = {
 	{ PR_1_RESIZE_INODE_CREATE,
 	  N_("Resize @i (re)creation failed: %m."),
 	  PROMPT_ABORT, 0 },
+
+	/* Exclude inode failed */
+	{ PR_1_EXCLUDE_INODE_CREATE,
+	  N_("Exclude @i (re)creation failed: %m."),
+	  PROMPT_CLEAR, 0 },
 
 	/* invalid inode->i_extra_isize */
 	{ PR_1_EXTRA_ISIZE,

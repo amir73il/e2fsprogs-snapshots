@@ -845,7 +845,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 			if (ino == EXT2_BOOT_LOADER_INO) {
 				if (LINUX_S_ISDIR(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
-			} else if (ino == EXT2_RESIZE_INO) {
+			} else if (ino == EXT2_RESIZE_INO || ino == EXT2_EXCLUDE_INO) {
 				if (inode->i_mode &&
 				    !LINUX_S_ISREG(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
@@ -1090,6 +1090,25 @@ void e2fsck_pass1(e2fsck_t ctx)
 		inode->i_mtime = ctx->now;
 		e2fsck_write_inode(ctx, EXT2_RESIZE_INO, inode,
 				   "recreate inode");
+		fs->block_map = save_bmap;
+		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
+	}
+
+	if (ctx->flags & E2F_FLAG_EXCLUDE_INODE) {
+		ext2fs_block_bitmap save_bmap;
+
+		save_bmap = fs->block_map;
+		fs->block_map = ctx->block_found_map;
+		clear_problem_context(&pctx);
+		pctx.errcode = ext2fs_create_exclude_inode(fs);
+		if (pctx.errcode &&
+			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, inode,
+					   "clear_exclude");
+			fs->super->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+			ctx->flags |= E2F_FLAG_RESTART;
+		}
 		fs->block_map = save_bmap;
 		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
 	}
@@ -1599,6 +1618,16 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 			struct ext2_inode *inode, int restart_flag,
 			const char *source)
 {
+	/* don't clear inode with blocks when preening volume with next3 snapshots -goldor */
+	if ((ctx->fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+		 ctx->fs->super->s_last_snapshot != 0) {
+		int i;
+		for (i = 0; i < EXT2_N_BLOCKS; i++)
+			if (inode->i_block[i])
+				/* if we don't halt, inode blocks will be freed -goldor */
+				preenhalt(ctx);
+	}
+
 	inode->i_flags = 0;
 	inode->i_links_count = 0;
 	ext2fs_icount_store(ctx->inode_link_info, ino, 0);

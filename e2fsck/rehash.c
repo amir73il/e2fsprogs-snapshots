@@ -812,6 +812,12 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
 	int			cur, max, all_dirs, dir_index, first = 1;
 
 	init_resource_track(&rtrack, ctx->fs->io);
+
+ 	/* never rehash directories when scanning volume with next3 snapshots -goldor */
+ 	if ((ctx->fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+ 		 ctx->fs->super->s_last_snapshot != 0)
+ 		return;
+ 
 	all_dirs = ctx->options & E2F_OPT_COMPRESS_DIRS;
 
 	if (!ctx->dirs_to_hash && !all_dirs)

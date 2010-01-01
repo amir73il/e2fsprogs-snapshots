@@ -507,6 +507,8 @@ typedef struct ext2_icount *ext2_icount_t;
 #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
 					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
 					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
+					 NEXT3_FEATURE_COMPAT_BIG_JOURNAL|\
+					 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE|\
 					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
 					 EXT2_FEATURE_COMPAT_EXT_ATTR)
@@ -537,6 +539,7 @@ typedef struct ext2_icount *ext2_icount_t;
 #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
+					 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
@@ -1216,6 +1219,8 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
 extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
 					  int flags);
 extern int ext2fs_default_journal_size(__u64 blocks);
+extern int ext2fs_big_journal_size(__u64 blocks);
+extern int ext2fs_check_journal_size(ext2_filsys fs);
 
 /* openfs.c */
 extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
@@ -1262,6 +1267,7 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
 
 /* res_gdt.c */
 extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
+extern errcode_t ext2fs_create_exclude_inode(ext2_filsys fs);
 
 /* swapfs.c */
 extern void ext2fs_swap_ext_attr(char *to, char *from, int bufsize,

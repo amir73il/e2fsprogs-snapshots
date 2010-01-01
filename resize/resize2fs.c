@@ -48,6 +48,7 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
 static errcode_t inode_ref_fix(ext2_resize_t rfs);
 static errcode_t move_itables(ext2_resize_t rfs);
 static errcode_t fix_resize_inode(ext2_filsys fs);
+static errcode_t fix_exclude_inode(ext2_filsys fs);
 static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
 static errcode_t fix_sb_journal_backup(ext2_filsys fs);
 
@@ -146,6 +147,10 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
 		goto errout;
 
 	retval = fix_resize_inode(rfs->new_fs);
+	if (retval)
+		goto errout;
+
+	retval = fix_exclude_inode(rfs->new_fs);
 	if (retval)
 		goto errout;
 
@@ -1768,6 +1773,26 @@ errout:
 	if (block_buf)
 		ext2fs_free_mem(&block_buf);
 	return retval;
+}
+
+/*
+ * Fix the exclude inode
+ */
+static errcode_t fix_exclude_inode(ext2_filsys fs)
+{
+	if (!(fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+		return 0;
+	/* 
+	 * create_exclude_inode():
+	 * - updates bg_exclude_bitmap for existing block groups
+	 * - allocates exclude bitmap blocks for new block groups
+	 * - doesn't free exclude bitmap blocks of deleted block group,
+	 *   so when resizing from large to small filesystem, 
+	 *   it would be wise to remove the exclude inode beforehand.
+	 *   -goldor
+	 */
+	return ext2fs_create_exclude_inode(fs);
 }
 
 /*
