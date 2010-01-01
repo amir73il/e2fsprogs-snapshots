@@ -343,7 +343,13 @@ int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
  * @offset:		file offset.
  * @len:		file size.
  */
-static int fallocate(int fd, int mode, loff_t offset, loff_t len)
+int fallocate(int fd, int mode, loff_t offset, loff_t len)
+{
+	return syscall(__NR_fallocate, fd, mode, offset, len);
+}
+#else
+/* temporary fix for CentOS-5.4 -ezk */
+int fallocate(int fd, int mode, loff_t offset, loff_t len)
 {
 	return syscall(__NR_fallocate, fd, mode, offset, len);
 }
