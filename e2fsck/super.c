@@ -497,8 +497,7 @@ void check_exclude_inode(e2fsck_t ctx)
 		}
 	}	
 	else if (!(fs->super->s_feature_ro_compat & 
-		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
-		 fs->super->s_last_snapshot == 0) {
+		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		/* force check of exclude inode */
 		clear_problem_context(&pctx);
 		pctx.errcode = ext2fs_create_exclude_inode(fs);
