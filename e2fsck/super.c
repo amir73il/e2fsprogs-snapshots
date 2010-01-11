@@ -231,7 +231,7 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
-	/* never release orphan inodes when scanning volume with next3 snapshots -goldor */
+	/* never release orphan inodes when scanning volume with next3 snapshots */
 	if ((fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 fs->super->s_last_snapshot != 0)
 		return 0;

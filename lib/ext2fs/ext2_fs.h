@@ -639,7 +639,6 @@ struct ext2_super_block {
  * 'big journal' needs to accomodate extra snapshot COW credits
  * default size accomodates maximum possible COW credits
  * minimum required size accomodates the avarage COW credits
- * -goldor
  */
 #define EXT3_DEF_JOURNAL_BLOCKS		32768
 #define NEXT3_AVG_COW_CREDITS		16

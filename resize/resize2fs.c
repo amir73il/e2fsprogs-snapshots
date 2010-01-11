@@ -1790,7 +1790,6 @@ static errcode_t fix_exclude_inode(ext2_filsys fs)
 	 * - doesn't free exclude bitmap blocks of deleted block group,
 	 *   so when resizing from large to small filesystem, 
 	 *   it would be wise to remove the exclude inode beforehand.
-	 *   -goldor
 	 */
 	return ext2fs_create_exclude_inode(fs);
 }

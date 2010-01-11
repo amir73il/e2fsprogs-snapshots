@@ -1618,13 +1618,13 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 			struct ext2_inode *inode, int restart_flag,
 			const char *source)
 {
-	/* don't clear inode with blocks when preening volume with next3 snapshots -goldor */
+	/* don't clear inode with blocks when preening volume with next3 snapshots */
 	if ((ctx->fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 ctx->fs->super->s_last_snapshot != 0) {
 		int i;
 		for (i = 0; i < EXT2_N_BLOCKS; i++)
 			if (inode->i_block[i])
-				/* if we don't halt, inode blocks will be freed -goldor */
+				/* if we don't halt, inode blocks will be freed */
 				preenhalt(ctx);
 	}
 

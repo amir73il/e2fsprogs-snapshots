@@ -404,7 +404,6 @@ int ext2fs_default_journal_size(__u64 blocks)
  * Big journal is up to 24 times bigger than the default journal
  * to accomodate snapshot COW credits in transactions.
  * journal size is restricted to 1/32 of the filesystem size
- * -goldor
  */
 int ext2fs_big_journal_size(__u64 blocks)
 {

@@ -223,7 +223,6 @@ out_free:
  * the exclude bitmap blocks are double indirectly linked to the exclude inode
  * the exclude bitmap block numbers are stored in the block group descriptors
  * the exclude bitmap allocation goal is the first block of the block group
- * -goldor
  */
 errcode_t ext2fs_create_exclude_inode(ext2_filsys fs)
 {
