@@ -68,7 +68,6 @@ typedef __u32		blk_t;
 typedef __u64		blk64_t;
 typedef __u32		dgrp_t;
 typedef __u32		ext2_off_t;
-typedef __u64		ext2_off64_t;
 typedef __s64		e2_blkcnt_t;
 typedef __u32		ext2_dirhash_t;
 
@@ -173,8 +172,6 @@ typedef struct ext2_file *ext2_file_t;
 #define EXT2_FLAG_EXCLUSIVE		0x4000
 #define EXT2_FLAG_SOFTSUPP_FEATURES	0x8000
 #define EXT2_FLAG_NOFREE_ON_ERROR	0x10000
-#define EXT2_FLAG_64BITS		0x20000
-#define EXT2_FLAG_PRINT_PROGRESS	0x40000
 
 /*
  * Special flag in the ext2 inode i_flag field that means that this is
@@ -507,8 +504,6 @@ typedef struct ext2_icount *ext2_icount_t;
 #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
 					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
 					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
-					 NEXT3_FEATURE_COMPAT_BIG_JOURNAL|\
-					 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE|\
 					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
 					 EXT2_FEATURE_COMPAT_EXT_ATTR)
@@ -539,7 +534,6 @@ typedef struct ext2_icount *ext2_icount_t;
 #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
-					 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
@@ -560,20 +554,12 @@ extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
 				  ext2fs_inode_bitmap map, ext2_ino_t *ret);
 extern errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
 				  ext2fs_block_bitmap map, blk_t *ret);
-extern errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
-				   ext2fs_block_bitmap map, blk64_t *ret);
 extern errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start,
 					blk_t finish, int num,
 					ext2fs_block_bitmap map,
 					blk_t *ret);
-extern errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start,
-					 blk64_t finish, int num,
-					 ext2fs_block_bitmap map,
-					 blk64_t *ret);
 extern errcode_t ext2fs_alloc_block(ext2_filsys fs, blk_t goal,
 				    char *block_buf, blk_t *ret);
-extern errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
-				     char *block_buf, blk64_t *ret);
 extern void ext2fs_set_alloc_block_callback(ext2_filsys fs,
 					    errcode_t (*func)(ext2_filsys fs,
 							      blk64_t goal,
@@ -599,7 +585,6 @@ void ext2fs_inode_alloc_stats(ext2_filsys fs, ext2_ino_t ino, int inuse);
 void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
 			       int inuse, int isdir);
 void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse);
-void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse);
 
 /* alloc_tables.c */
 extern errcode_t ext2fs_allocate_tables(ext2_filsys fs);
@@ -671,22 +656,14 @@ extern errcode_t ext2fs_fudge_inode_bitmap_end(ext2fs_inode_bitmap bitmap,
 					       ext2_ino_t end, ext2_ino_t *oend);
 extern errcode_t ext2fs_fudge_block_bitmap_end(ext2fs_block_bitmap bitmap,
 					       blk_t end, blk_t *oend);
-extern errcode_t ext2fs_fudge_block_bitmap_end2(ext2fs_block_bitmap bitmap,
-					 blk64_t end, blk64_t *oend);
 extern void ext2fs_clear_inode_bitmap(ext2fs_inode_bitmap bitmap);
 extern void ext2fs_clear_block_bitmap(ext2fs_block_bitmap bitmap);
 extern errcode_t ext2fs_read_bitmaps(ext2_filsys fs);
 extern errcode_t ext2fs_write_bitmaps(ext2_filsys fs);
 extern errcode_t ext2fs_resize_inode_bitmap(__u32 new_end, __u32 new_real_end,
 					    ext2fs_inode_bitmap bmap);
-extern errcode_t ext2fs_resize_inode_bitmap2(__u64 new_end,
-					     __u64 new_real_end,
-					     ext2fs_inode_bitmap bmap);
 extern errcode_t ext2fs_resize_block_bitmap(__u32 new_end, __u32 new_real_end,
 					    ext2fs_block_bitmap bmap);
-extern errcode_t ext2fs_resize_block_bitmap2(__u64 new_end,
-					     __u64 new_real_end,
-					     ext2fs_block_bitmap bmap);
 extern errcode_t ext2fs_compare_block_bitmap(ext2fs_block_bitmap bm1,
 					     ext2fs_block_bitmap bm2);
 extern errcode_t ext2fs_compare_inode_bitmap(ext2fs_inode_bitmap bm1,
@@ -694,85 +671,16 @@ extern errcode_t ext2fs_compare_inode_bitmap(ext2fs_inode_bitmap bm1,
 extern errcode_t ext2fs_set_inode_bitmap_range(ext2fs_inode_bitmap bmap,
 					ext2_ino_t start, unsigned int num,
 					void *in);
-extern errcode_t ext2fs_set_inode_bitmap_range2(ext2fs_inode_bitmap bmap,
-					 __u64 start, size_t num,
-					 void *in);
 extern errcode_t ext2fs_get_inode_bitmap_range(ext2fs_inode_bitmap bmap,
 					ext2_ino_t start, unsigned int num,
 					void *out);
-extern errcode_t ext2fs_get_inode_bitmap_range2(ext2fs_inode_bitmap bmap,
-					 __u64 start, size_t num,
-					 void *out);
 extern errcode_t ext2fs_set_block_bitmap_range(ext2fs_block_bitmap bmap,
 					blk_t start, unsigned int num,
 					void *in);
-extern errcode_t ext2fs_set_block_bitmap_range2(ext2fs_block_bitmap bmap,
-					 blk64_t start, size_t num,
-					 void *in);
 extern errcode_t ext2fs_get_block_bitmap_range(ext2fs_block_bitmap bmap,
 					blk_t start, unsigned int num,
 					void *out);
-extern errcode_t ext2fs_get_block_bitmap_range2(ext2fs_block_bitmap bmap,
-					 blk64_t start, size_t num,
-					 void *out);
 
-/* blknum.c */
-extern dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t);
-extern blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group);
-extern blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group);
-extern blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
-					 struct ext2_inode *inode);
-extern blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
-					 struct ext2_inode *inode);
-extern blk64_t ext2fs_blocks_count(struct ext2_super_block *super);
-extern void ext2fs_blocks_count_set(struct ext2_super_block *super,
-				    blk64_t blk);
-extern void ext2fs_blocks_count_add(struct ext2_super_block *super,
-				    blk64_t blk);
-extern blk64_t ext2fs_r_blocks_count(struct ext2_super_block *super);
-extern void ext2fs_r_blocks_count_set(struct ext2_super_block *super,
-				      blk64_t blk);
-extern void ext2fs_r_blocks_count_add(struct ext2_super_block *super,
-				      blk64_t blk);
-extern blk64_t ext2fs_free_blocks_count(struct ext2_super_block *super);
-extern void ext2fs_free_blocks_count_set(struct ext2_super_block *super,
-					 blk64_t blk);
-extern void ext2fs_free_blocks_count_add(struct ext2_super_block *super,
-					 blk64_t blk);
-/* Block group descriptor accessor functions */
-extern struct ext2_group_desc *ext2fs_group_desc(ext2_filsys fs,
-					  struct ext2_group_desc *gdp,
-					  dgrp_t group);
-extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
-					blk64_t blk);
-extern blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
-					blk64_t blk);
-extern blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group,
-				       blk64_t blk);
-extern __u32 ext2fs_bg_free_blocks_count(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_free_blocks_count_set(ext2_filsys fs, dgrp_t group,
-					 __u32 n);
-extern __u32 ext2fs_bg_free_inodes_count(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_free_inodes_count_set(ext2_filsys fs, dgrp_t group,
-					 __u32 n);
-extern __u32 ext2fs_bg_used_dirs_count(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_used_dirs_count_set(ext2_filsys fs, dgrp_t group,
-				       __u32 n);
-extern __u32 ext2fs_bg_itable_unused(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_itable_unused_set(ext2_filsys fs, dgrp_t group,
-				     __u32 n);
-extern __u16 ext2fs_bg_flags(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_flags_zap(ext2_filsys fs, dgrp_t group);
-extern int ext2fs_bg_flags_test(ext2_filsys fs, dgrp_t group, __u16 bg_flag);
-extern void ext2fs_bg_flags_set(ext2_filsys fs, dgrp_t group, __u16 bg_flags);
-extern void ext2fs_bg_flags_clear(ext2_filsys fs, dgrp_t group, __u16 bg_flags);
-extern __u16 ext2fs_bg_checksum(ext2_filsys fs, dgrp_t group);
-extern void ext2fs_bg_checksum_set(ext2_filsys fs, dgrp_t group, __u16 checksum);
-extern blk64_t ext2fs_file_acl_block(const struct ext2_inode *inode);
-extern void ext2fs_file_acl_block_set(struct ext2_inode *inode, blk64_t blk);
 
 /* block.c */
 extern errcode_t ext2fs_block_iterate(ext2_filsys fs,
@@ -792,17 +700,6 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 					    blk_t	*blocknr,
 					    e2_blkcnt_t	blockcnt,
 					    blk_t	ref_blk,
-					    int		ref_offset,
-					    void	*priv_data),
-				void *priv_data);
-errcode_t ext2fs_block_iterate3(ext2_filsys fs,
-				ext2_ino_t ino,
-				int	flags,
-				char *block_buf,
-				int (*func)(ext2_filsys fs,
-					    blk64_t	*blocknr,
-					    e2_blkcnt_t	blockcnt,
-					    blk64_t	ref_blk,
 					    int		ref_offset,
 					    void	*priv_data),
 				void *priv_data);
@@ -832,12 +729,6 @@ extern errcode_t ext2fs_check_desc(ext2_filsys fs);
 extern errcode_t ext2fs_close(ext2_filsys fs);
 extern errcode_t ext2fs_flush(ext2_filsys fs);
 extern int ext2fs_bg_has_super(ext2_filsys fs, int group_block);
-extern errcode_t ext2fs_super_and_bgd_loc2(ext2_filsys fs,
-				    dgrp_t group,
-				    blk64_t *ret_super_blk,
-				    blk64_t *ret_old_desc_blk,
-				    blk64_t *ret_new_desc_blk,
-				    blk_t *ret_used_blks);
 extern int ext2fs_super_and_bgd_loc(ext2_filsys fs,
 				    dgrp_t group,
 				    blk_t *ret_super_blk,
@@ -892,13 +783,9 @@ extern errcode_t ext2fs_read_dir_block(ext2_filsys fs, blk_t block,
 				       void *buf);
 extern errcode_t ext2fs_read_dir_block2(ext2_filsys fs, blk_t block,
 					void *buf, int flags);
-extern errcode_t ext2fs_read_dir_block3(ext2_filsys fs, blk64_t block,
-					void *buf, int flags);
 extern errcode_t ext2fs_write_dir_block(ext2_filsys fs, blk_t block,
 					void *buf);
 extern errcode_t ext2fs_write_dir_block2(ext2_filsys fs, blk_t block,
-					 void *buf, int flags);
-extern errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
 					 void *buf, int flags);
 
 /* dirhash.c */
@@ -948,16 +835,9 @@ extern errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir);
 extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
 					void *data);
 extern errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf);
-extern errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block,
-				       void *buf);
 extern errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block,
 				       void *buf);
-extern errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block,
-				       void *buf);
 extern errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
-					   char *block_buf,
-					   int adjust, __u32 *newcount);
-extern errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
 					   char *block_buf,
 					   int adjust, __u32 *newcount);
 
@@ -1053,33 +933,6 @@ extern errcode_t ext2fs_set_generic_bitmap_range(ext2fs_generic_bitmap bmap,
 						 errcode_t magic,
 						 __u32 start, __u32 num,
 						 void *in);
-
-/* gen_bitmap64.c */
-void ext2fs_free_generic_bmap(ext2fs_generic_bitmap bmap);
-errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
-				    int type, __u64 start, __u64 end,
-				    __u64 real_end,
-				    const char *descr,
-				    ext2fs_generic_bitmap *ret);
-errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap src,
-				   ext2fs_generic_bitmap *dest);
-void ext2fs_clear_generic_bmap(ext2fs_generic_bitmap bitmap);
-errcode_t ext2fs_fudge_generic_bmap_end(ext2fs_generic_bitmap bitmap,
-					errcode_t neq,
-					__u64 end, __u64 *oend);
-void ext2fs_set_generic_bmap_padding(ext2fs_generic_bitmap bmap);
-errcode_t ext2fs_resize_generic_bmap(ext2fs_generic_bitmap bmap,
-				     __u64 new_end,
-				     __u64 new_real_end);
-errcode_t ext2fs_compare_generic_bmap(errcode_t neq,
-				      ext2fs_generic_bitmap bm1,
-				      ext2fs_generic_bitmap bm2);
-errcode_t ext2fs_get_generic_bmap_range(ext2fs_generic_bitmap bmap,
-					__u64 start, unsigned int num,
-					void *out);
-errcode_t ext2fs_set_generic_bmap_range(ext2fs_generic_bitmap bmap,
-					__u64 start, unsigned int num,
-					void *in);
 
 /* getsize.c */
 extern errcode_t ext2fs_get_device_size(const char *file, int blocksize,
@@ -1209,8 +1062,6 @@ extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum
 /* mkjournal.c */
 extern errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
 				    blk_t *ret_blk, int *ret_count);
-extern errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
-				     blk64_t *ret_blk, int *ret_count); 
 extern errcode_t ext2fs_create_journal_superblock(ext2_filsys fs,
 						  __u32 size, int flags,
 						  char  **ret_jsb);
@@ -1219,8 +1070,6 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
 extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
 					  int flags);
 extern int ext2fs_default_journal_size(__u64 blocks);
-extern int ext2fs_big_journal_size(__u64 blocks);
-extern int ext2fs_check_journal_size(ext2_filsys fs);
 
 /* openfs.c */
 extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
@@ -1230,8 +1079,6 @@ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
 			      int flags, int superblock,
 			      unsigned int block_size, io_manager manager,
 			      ext2_filsys *ret_fs);
-extern blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs,
-					blk64_t group_block, dgrp_t i);
 extern blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block,
 					 dgrp_t i);
 errcode_t ext2fs_get_data_io(ext2_filsys fs, io_channel *old_io);
@@ -1267,7 +1114,6 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
 
 /* res_gdt.c */
 extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
-extern errcode_t ext2fs_create_exclude_inode(ext2_filsys fs);
 
 /* swapfs.c */
 extern void ext2fs_swap_ext_attr(char *to, char *from, int bufsize,
@@ -1278,7 +1124,6 @@ extern void ext2fs_swap_ext_attr_entry(struct ext2_ext_attr_entry *to_entry,
 				       struct ext2_ext_attr_entry *from_entry);
 extern void ext2fs_swap_super(struct ext2_super_block * super);
 extern void ext2fs_swap_group_desc(struct ext2_group_desc *gdp);
-extern void ext2fs_swap_group_desc2(ext2_filsys, struct ext2_group_desc *gdp);
 extern void ext2fs_swap_inode_full(ext2_filsys fs, struct ext2_inode_large *t,
 				   struct ext2_inode_large *f, int hostorder,
 				   int bufsize);
@@ -1322,7 +1167,6 @@ extern blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group);
 extern blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
 				      struct ext2_inode *inode);
 extern unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b);
-extern __u64 ext2fs_div64_ceil(__u64 a, __u64 b);
 
 /*
  * The actual inlined functions definitions themselves...
@@ -1482,8 +1326,10 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
  */
 _INLINE_ int ext2fs_group_of_blk(ext2_filsys fs, blk_t blk)
 {
-	return ext2fs_group_of_blk2(fs, blk);
+	return (blk - fs->super->s_first_data_block) /
+		fs->super->s_blocks_per_group;
 }
+
 /*
  * Return the group # of an inode number
  */
@@ -1497,7 +1343,8 @@ _INLINE_ int ext2fs_group_of_ino(ext2_filsys fs, ext2_ino_t ino)
  */
 _INLINE_ blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group)
 {
-	return ext2fs_group_first_block2(fs, group);
+	return fs->super->s_first_data_block +
+		(group * fs->super->s_blocks_per_group);
 }
 
 /*
@@ -1505,13 +1352,17 @@ _INLINE_ blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group)
  */
 _INLINE_ blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group)
 {
-	return ext2fs_group_last_block2(fs, group);
+	return (group == fs->group_desc_count - 1 ?
+		fs->super->s_blocks_count - 1 :
+		ext2fs_group_first_block(fs, group) +
+			(fs->super->s_blocks_per_group - 1));
 }
 
 _INLINE_ blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
 					struct ext2_inode *inode)
 {
-	return ext2fs_inode_data_blocks2(fs, inode);
+       return inode->i_blocks -
+              (inode->i_file_acl ? fs->blocksize >> 9 : 0);
 }
 
 /*
@@ -1523,14 +1374,6 @@ _INLINE_ unsigned int ext2fs_div_ceil(unsigned int a, unsigned int b)
 		return 0;
 	return ((a - 1) / b) + 1;
 }
-
-_INLINE_ __u64 ext2fs_div64_ceil(__u64 a, __u64 b)
-{
-	if (!a)
-		return 0;
-	return ((a - 1) / b) + 1;
-}
-
 #undef _INLINE_
 #endif
 

@@ -48,9 +48,9 @@ static int deleted_info_compare(const void *a, const void *b)
 }
 
 static int lsdel_proc(ext2_filsys fs,
-		      blk64_t	*block_nr,
+		      blk_t	*block_nr,
 		      e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
-		      blk64_t ref_block EXT2FS_ATTR((unused)),
+		      blk_t ref_block EXT2FS_ATTR((unused)),
 		      int ref_offset EXT2FS_ATTR((unused)),
 		      void *private)
 {
@@ -59,12 +59,12 @@ static int lsdel_proc(ext2_filsys fs,
 	lsd->num_blocks++;
 
 	if (*block_nr < fs->super->s_first_data_block ||
-	    *block_nr >= ext2fs_blocks_count(fs->super)) {
+	    *block_nr >= fs->super->s_blocks_count) {
 		lsd->bad_blocks++;
 		return BLOCK_ABORT;
 	}
 
-	if (!ext2fs_test_block_bitmap2(fs->block_map,*block_nr))
+	if (!ext2fs_test_block_bitmap(fs->block_map,*block_nr))
 		lsd->free_blocks++;
 
 	return 0;
@@ -140,7 +140,7 @@ void do_lsdel(int argc, char **argv)
 		lsd.free_blocks = 0;
 		lsd.bad_blocks = 0;
 
-		retval = ext2fs_block_iterate3(current_fs, ino,
+		retval = ext2fs_block_iterate2(current_fs, ino,
 					       BLOCK_FLAG_READ_ONLY, block_buf,
 					       lsdel_proc, &lsd);
 		if (retval) {

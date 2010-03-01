@@ -111,11 +111,11 @@ static void determine_fs_stride(ext2_filsys fs)
 		has_sb = ext2fs_bg_has_super(fs, group);
 		if (group == 0 || has_sb != prev_has_sb)
 			goto next;
-		b_stride = ext2fs_block_bitmap_loc(fs, group) -
-			ext2fs_block_bitmap_loc(fs, group - 1) -
+		b_stride = fs->group_desc[group].bg_block_bitmap -
+			fs->group_desc[group-1].bg_block_bitmap -
 			fs->super->s_blocks_per_group;
-		i_stride = ext2fs_inode_bitmap_loc(fs, group) -
-			ext2fs_inode_bitmap_loc(fs, group - 1) -
+		i_stride = fs->group_desc[group].bg_inode_bitmap -
+			fs->group_desc[group-1].bg_inode_bitmap -
 			fs->super->s_blocks_per_group;
 		if (b_stride != i_stride ||
 		    b_stride < 0)
@@ -375,7 +375,7 @@ int main (int argc, char ** argv)
 		exit(1);
 	}
 	if (force_min_size)
-		new_size = min_size;
+		new_size = calculate_minimum_resize_size(fs);
 	else if (new_size_str) {
 		new_size = parse_num_blocks(new_size_str,
 					    fs->super->s_log_block_size);
@@ -429,7 +429,7 @@ int main (int argc, char ** argv)
 			fs->blocksize / 1024, new_size);
 		exit(1);
 	}
-	if (new_size == ext2fs_blocks_count(fs->super)) {
+	if (new_size == fs->super->s_blocks_count) {
 		fprintf(stderr, _("The filesystem is already %u blocks "
 			"long.  Nothing to do!\n\n"), new_size);
 		exit(0);
@@ -437,16 +437,6 @@ int main (int argc, char ** argv)
 	if (mount_flags & EXT2_MF_MOUNTED) {
 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
 	} else {
-		/*
-		 * This is something we should fix eventually, though.
-		 */
-		if (!force && (fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
-			fprintf(stderr,
-				_("offline resize will damage next3 snapshots on %s - "
-					"Please mount the filesystem for online resize.\n\n"),
-				device_name);
-			exit(1);
-		}
 		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
 			       (fs->super->s_state & EXT2_ERROR_FS) ||
 			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {

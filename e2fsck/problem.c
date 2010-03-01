@@ -252,12 +252,12 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Illegal block found in orphaned inode */
 	{ PR_0_ORPHAN_ILLEGAL_BLOCK_NUM,
-	   N_("@I %B (%b) found in @o @i %i.\n"),
+	   N_("@I @b #%B (%b) found in @o @i %i.\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Already cleared block found in orphaned inode */
 	{ PR_0_ORPHAN_ALREADY_CLEARED_BLOCK,
-	   N_("Already cleared %B (%b) found in @o @i %i.\n"),
+	   N_("Already cleared @b #%B (%b) found in @o @i %i.\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Illegal orphan inode in superblock */
@@ -332,16 +332,6 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Resize @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
 
-	/* Exclude not enabled, but exclude inode is non-zero */
-	{ PR_0_CLEAR_EXCLUDE_INODE,
-	  N_("Exclude_@i not enabled, but the exclude @i is non-zero.  "),
-	  PROMPT_CLEAR, 0 },
-
-	/* Exclude inode invalid */
-	{ PR_0_EXCLUDE_INODE_INVALID,
-	  N_("Exclude @i not valid.  "),
-	  PROMPT_RECREATE, 0 },
-
 	/* Last mount time is in the future */
 	{ PR_0_FUTURE_SB_LAST_MOUNT,
 	  N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
@@ -398,13 +388,13 @@ static struct e2fsck_problem problem_table[] = {
 	/* Last mount time is in the future (fudged) */
 	{ PR_0_FUTURE_SB_LAST_MOUNT_FUDGED,
 	  N_("@S last mount time is in the future.\n\t(by less than a day, "
-	     "probably due to the hardware clock being incorrectly set)  "),
+	     "probably due to buggy init scripts)  "),
 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
 
 	/* Last write time is in the future (fudged) */
 	{ PR_0_FUTURE_SB_LAST_WRITE_FUDGED,
 	  N_("@S last write time is in the future.\n\t(by less than a day, "
-	     "probably due to the hardware clock being incorrectly set).  "),
+	     "probably due to buggy init scripts).  "),
 	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
 
 	/* Block group checksum (latch question) is invalid. */
@@ -485,12 +475,12 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Illegal blocknumber in inode */
 	{ PR_1_ILLEGAL_BLOCK_NUM,
-	  N_("@I %B (%b) in @i %i.  "),
+	  N_("@I @b #%B (%b) in @i %i.  "),
 	  PROMPT_CLEAR, PR_LATCH_BLOCK },
 
 	/* Block number overlaps fs metadata */
 	{ PR_1_BLOCK_OVERLAPS_METADATA,
-	  N_("%B (%b) overlaps @f metadata in @i %i.  "),
+	  N_("@b #%B (%b) overlaps @f metadata in @i %i.  "),
 	  PROMPT_CLEAR, PR_LATCH_BLOCK },
 
 	/* Inode has illegal blocks (latch question) */
@@ -505,7 +495,7 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Illegal block number in bad block inode */
 	{ PR_1_BB_ILLEGAL_BLOCK_NUM,
-	  N_("@I %B (%b) in bad @b @i.  "),
+	  N_("@I @b #%B (%b) in bad @b @i.  "),
 	  PROMPT_CLEAR, PR_LATCH_BBLOCK },
 
 	/* Bad block inode has illegal blocks (latch question) */
@@ -717,7 +707,7 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Extended attribute reference count incorrect */
 	{ PR_1_EXTATTR_REFCOUNT,
-	  N_("@a @b %b has reference count %r, @s %N.  "),
+	  N_("@a @b %b has reference count %B, @s %N.  "),
 	  PROMPT_FIX, 0 },
 
 	/* Error writing Extended Attribute block while fixing refcount */
@@ -756,17 +746,17 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Directory too big */
 	{ PR_1_TOOBIG_DIR,
-	  N_("%B (%b) causes @d to be too big.  "),
+	  N_("@b #%B (%b) causes @d to be too big.  "),
 	  PROMPT_CLEAR, PR_LATCH_TOOBIG },
 
 	/* Regular file too big */
 	{ PR_1_TOOBIG_REG,
-	  N_("%B (%b) causes file to be too big.  "),
+	  N_("@b #%B (%b) causes file to be too big.  "),
 	  PROMPT_CLEAR, PR_LATCH_TOOBIG },
 
 	/* Symlink too big */
 	{ PR_1_TOOBIG_SYMLINK,
-	  N_("%B (%b) causes symlink to be too big.  "),
+	  N_("@b #%B (%b) causes symlink to be too big.  "),
 	  PROMPT_CLEAR, PR_LATCH_TOOBIG },
 
 	/* INDEX_FL flag set on a non-HTREE filesystem */
@@ -809,11 +799,6 @@ static struct e2fsck_problem problem_table[] = {
 	{ PR_1_RESIZE_INODE_CREATE,
 	  N_("Resize @i (re)creation failed: %m."),
 	  PROMPT_ABORT, 0 },
-
-	/* Exclude inode failed */
-	{ PR_1_EXCLUDE_INODE_CREATE,
-	  N_("Exclude @i (re)creation failed: %m."),
-	  PROMPT_CLEAR, 0 },
 
 	/* invalid inode->i_extra_isize */
 	{ PR_1_EXTRA_ISIZE,
@@ -958,7 +943,7 @@ static struct e2fsck_problem problem_table[] = {
 	/* File has duplicate blocks */
 	{ PR_1D_DUP_FILE,
 	  N_("File %Q (@i #%i, mod time %IM) \n"
-	  "  has %r @m @b(s), shared with %N file(s):\n"),
+	  "  has %B @m @b(s), shared with %N file(s):\n"),
 	  PROMPT_NONE, 0 },
 
 	/* List of files sharing duplicate blocks */
@@ -1092,17 +1077,17 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* directory corrupted */
 	{ PR_2_DIR_CORRUPTED,
-	  N_("@d @i %i, %B, offset %N: @d corrupted\n"),
+	  N_("@d @i %i, @b %B, offset %N: @d corrupted\n"),
 	  PROMPT_SALVAGE, 0 },
 
 	/* filename too long */
 	{ PR_2_FILENAME_LONG,
-	  N_("@d @i %i, %B, offset %N: filename too long\n"),
+	  N_("@d @i %i, @b %B, offset %N: filename too long\n"),
 	  PROMPT_TRUNCATE, 0 },
 
 	/* Directory inode has a missing block (hole) */
 	{ PR_2_DIRECTORY_HOLE,
-	  N_("@d @i %i has an unallocated %B.  "),
+	  N_("@d @i %i has an unallocated @b #%B.  "),
 	  PROMPT_ALLOCATE, 0 },
 
 	/* '.' is not NULL terminated */
@@ -1227,22 +1212,22 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Node in HTREE directory not referenced */
 	{ PR_2_HTREE_NOTREF,
-	  N_("@p @h %d: %B not referenced\n"),
+	  N_("@p @h %d: node (%B) not referenced\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Node in HTREE directory referenced twice */
 	{ PR_2_HTREE_DUPREF,
-	  N_("@p @h %d: %B referenced twice\n"),
+	  N_("@p @h %d: node (%B) referenced twice\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Node in HTREE directory has bad min hash */
 	{ PR_2_HTREE_MIN_HASH,
-	  N_("@p @h %d: %B has bad min hash\n"),
+	  N_("@p @h %d: node (%B) has bad min hash\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Node in HTREE directory has bad max hash */
 	{ PR_2_HTREE_MAX_HASH,
-	  N_("@p @h %d: %B has bad max hash\n"),
+	  N_("@p @h %d: node (%B) has bad max hash\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Clear invalid HTREE directory */
@@ -1266,22 +1251,22 @@ static struct e2fsck_problem problem_table[] = {
 
 	/* Invalid HTREE limit */
 	{ PR_2_HTREE_BAD_LIMIT,
-	  N_("@p @h %d: %B has @n limit (%N)\n"),
+	  N_("@p @h %d: node (%B) has @n limit (%N)\n"),
 	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
 
 	/* Invalid HTREE count */
 	{ PR_2_HTREE_BAD_COUNT,
-	  N_("@p @h %d: %B has @n count (%N)\n"),
+	  N_("@p @h %d: node (%B) has @n count (%N)\n"),
 	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
 
 	/* HTREE interior node has out-of-order hashes in table */
 	{ PR_2_HTREE_HASH_ORDER,
-	  N_("@p @h %d: %B has an unordered hash table\n"),
+	  N_("@p @h %d: node (%B) has an unordered hash table\n"),
 	  PROMPT_CLEAR_HTREE, PR_PREEN_OK },
 
 	/* Node in HTREE directory has invalid depth */
 	{ PR_2_HTREE_BAD_DEPTH,
-	  N_("@p @h %d: %B has @n depth (%N)\n"),
+	  N_("@p @h %d: node (%B) has @n depth (%N)\n"),
 	  PROMPT_NONE, 0 },
 
 	/* Duplicate directory entry found */

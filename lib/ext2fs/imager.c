@@ -71,7 +71,7 @@ errcode_t ext2fs_image_inode_write(ext2_filsys fs, int fd, int flags)
 		return ENOMEM;
 
 	for (group = 0; group < fs->group_desc_count; group++) {
-		blk = ext2fs_inode_table_loc(fs, (unsigned)group);
+		blk = fs->group_desc[(unsigned)group].bg_inode_table;
 		if (!blk) {
 			retval = EXT2_ET_MISSING_INODE_TABLE;
 			goto errout;
@@ -81,7 +81,7 @@ errcode_t ext2fs_image_inode_write(ext2_filsys fs, int fd, int flags)
 			c = BUF_BLOCKS;
 			if (c > left)
 				c = left;
-			retval = io_channel_read_blk64(fs->io, blk, c, buf);
+			retval = io_channel_read_blk(fs->io, blk, c, buf);
 			if (retval)
 				goto errout;
 			cp = buf;
@@ -145,7 +145,7 @@ errcode_t ext2fs_image_inode_read(ext2_filsys fs, int fd,
 		return ENOMEM;
 
 	for (group = 0; group < fs->group_desc_count; group++) {
-		blk = ext2fs_inode_table_loc(fs, (unsigned)group);
+		blk = fs->group_desc[(unsigned)group].bg_inode_table;
 		if (!blk) {
 			retval = EXT2_ET_MISSING_INODE_TABLE;
 			goto errout;
@@ -164,7 +164,7 @@ errcode_t ext2fs_image_inode_read(ext2_filsys fs, int fd,
 				retval = EXT2_ET_SHORT_READ;
 				goto errout;
 			}
-			retval = io_channel_write_blk64(fs->io, blk, c, buf);
+			retval = io_channel_write_blk(fs->io, blk, c, buf);
 			if (retval)
 				goto errout;
 
@@ -314,8 +314,8 @@ errcode_t ext2fs_image_bitmap_write(ext2_filsys fs, int fd, int flags)
 		if (size > (cnt >> 3))
 			size = (cnt >> 3);
 
-		retval = ext2fs_get_generic_bmap_range(bmap, itr,
-						       size << 3, buf);
+		retval = ext2fs_get_generic_bitmap_range(bmap,
+				 err, itr, size << 3, buf);
 		if (retval)
 			return retval;
 
@@ -396,8 +396,8 @@ errcode_t ext2fs_image_bitmap_read(ext2_filsys fs, int fd, int flags)
 		if (actual != (int) size)
 			return EXT2_ET_SHORT_READ;
 
-		retval = ext2fs_set_generic_bmap_range(bmap, itr,
-						       size << 3, buf);
+		retval = ext2fs_set_generic_bitmap_range(bmap,
+				 err, itr, size << 3, buf);
 		if (retval)
 			return retval;
 

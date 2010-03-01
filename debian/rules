@@ -11,8 +11,8 @@
 export LC_ALL=C
 
 # Allow distro-specific behaviour
-DISTRO :=$(shell sed -ne '/DISTRIB_ID/s/.*=//p' /etc/lsb-release 2>/dev/null || echo Debian)
-SYS_BLKID_VER := $(shell dpkg-query -W libblkid1 | cut -f 2 | cut -b 1)
+DISTRO :=$(shell sed -ne '/DISTRIB_ID/s/.*=//p' /etc/lsb-release || echo Debian)
+SYS_BLKID_VER :=$(shell dpkg-query -W -f '${version}\n' libblkid1 | cut -b 1)
 ifeq ($(SYS_BLKID_VER),2)
 UTIL_LINUX_NG ?= yes
 endif
@@ -105,17 +105,22 @@ BUILDSTDSTAMP=${STAMPSDIR}/build-std-stamp
 BUILDBFSTAMP=${STAMPSDIR}/build-bf-stamp
 BUILDSTATICSTAMP=${STAMPSDIR}/build-static-stamp
 
+CCOPTS = -g
+
 INSTALL = install
 INSTALL_PROGRAM = $(INSTALL) -p -o root -g root -m 0755
 
+ifeq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+CCOPTS += -O2
+endif
 #ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 #INSTALL_PROGRAM += -s
 #endif
 
 ifeq (${DEB_HOST_ARCH},alpha)
-CFLAGS += -DHAVE_NETINET_IN_H
+CCOPTS += -DHAVE_NETINET_IN_H
 else
-CFLAGS += -D__NO_STRING_INLINES
+CCOPTS += -D__NO_STRING_INLINES
 endif
 
 ifeq (${DEB_HOST_ARCH_OS},linux)
@@ -125,7 +130,7 @@ else
 E2FSCK_STATIC = ${stdbuilddir}/e2fsck/e2fsck.static
 endif
 
-BF_CFLAGS = -Os -fomit-frame-pointer
+BF_CCOPTS = -Os -fomit-frame-pointer
 
 COMMON_CONF_FLAGS =  \
                 --enable-elf-shlibs --infodir=/usr/share/info
@@ -136,17 +141,21 @@ else
 COMMON_CONF_FLAGS += --enable-fsck
 endif
 
-STD_CONF_FLAGS = --enable-compression
+STD_CONF_FLAGS = --with-ccopts="${CCOPTS}" --enable-compression
 
-BF_CONF_FLAGS = --disable-nls --disable-imager --disable-testio-debug \
+BF_CONF_FLAGS = --with-ccopts="${CCOPTS} ${BF_CCOPTS}" \
+	--disable-nls --disable-imager --disable-testio-debug \
 	--disable-uuidd --disable-tls \
 	--disable-debugfs  --disable-e2initrd-helper
 
-STATIC_CONF_FLAGS = --disable-nls --disable-imager \
+STATIC_CONF_FLAGS = --with-ccopts="${CCOPTS}" \
+	--disable-nls --disable-imager \
 	--disable-uuidd --disable-tls \
-	--disable-e2initrd-helper
+	--disable-e2initrd-helper \
+	--with-ccopts=-fno-stack-protector
 
-MIPS_NOPIC_CONF_FLAGS = --disable-nls --disable-imager \
+MIPS_NOPIC_CONF_FLAGS = --with-ccopts="${CCOPTS}" \
+	--disable-nls --disable-imager \
 	--disable-uuidd --disable-tls \
         --disable-resizer # --disable-debugfs
 
@@ -179,22 +188,20 @@ ${CFGSTDSTAMP}:
 	mkdir -p ${stdbuilddir}
 ifeq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
 	cd ${stdbuilddir} && AWK=/usr/bin/awk \
-		${topdir}/configure ${COMMON_CONF_FLAGS} ${STD_CONF_FLAGS} \
-		CFLAGS="${CFLAGS}"
+		${topdir}/configure ${COMMON_CONF_FLAGS} ${STD_CONF_FLAGS}
 else
 	cd ${stdbuilddir} && AWK=/usr/bin/awk CC="${DEB_HOST_GNU_TYPE}-gcc" \
 		${topdir}/configure ${COMMON_CONF_FLAGS} ${STD_CONF_FLAGS} \
-		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE) \
-		CFLAGS="${CFLAGS}"
+		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE)
 endif
 
   # specially-built MIPS libs
 ifneq ($(ismips),)
 	mkdir -p ${mipsbuilddir} ${mipsbuilddir64}
 	cd ${mipsbuilddir} && AWK=/usr/bin/awk \
-		${topdir}/configure ${MIPS_NOPIC_CONF_FLAGS} CFLAGS="${CFLAGS}"
+		${topdir}/configure ${MIPS_NOPIC_CONF_FLAGS}
 	cd ${mipsbuilddir64} && AWK=/usr/bin/awk \
-		${topdir}/configure ${MIPS_NOPIC_CONF_FLAGS} CFLAGS="${CFLAGS}"
+		${topdir}/configure ${MIPS_NOPIC_CONF_FLAGS}
 endif
 
 	mkdir -p ${STAMPSDIR}
@@ -207,13 +214,11 @@ ${CFGBFSTAMP}:
 	mkdir -p ${bfbuilddir}
 ifeq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
 	cd ${bfbuilddir} && AWK=/usr/bin/awk \
-		${topdir}/configure ${COMMON_CONF_FLAGS} ${BF_CONF_FLAGS} \
-		CFLAGS="${CFLAGS} ${BF_CFLAGS}"
+		${topdir}/configure ${COMMON_CONF_FLAGS} ${BF_CONF_FLAGS}
 else
 	cd ${bfbuilddir} && AWK=/usr/bin/awk CC="${DEB_HOST_GNU_TYPE}-gcc" \
 		${topdir}/configure ${COMMON_CONF_FLAGS} ${BF_CONF_FLAGS} \
-		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE) \
-		CFLAGS="${CFLAGS}"
+		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE)
 endif
 	mkdir -p ${STAMPSDIR}
 	touch ${CFGBFSTAMP}
@@ -226,18 +231,16 @@ ${CFGSTATICSTAMP}:
 ifeq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
 	if type diet > /dev/null  2>&1 ; then \
 		cd ${staticbuilddir} && AWK=/usr/bin/awk \
-		${topdir}/configure ${STATIC_CONF_FLAGS} \
-		--with-diet-libc CFLAGS="${CFLAGS} -fno-stack-protector"; \
+			${topdir}/configure ${STATIC_CONF_FLAGS} \
+			--with-diet-libc; \
 	else \
 		cd ${staticbuilddir} && AWK=/usr/bin/awk \
-			${topdir}/configure ${STATIC_CONF_FLAGS} \
-			CFLAGS="${CFLAGS} -fno-stack-protector"; \
+			${topdir}/configure ${STATIC_CONF_FLAGS}; \
 	fi
 else
 	cd ${staticbuilddir} && AWK=/usr/bin/awk CC="${DEB_HOST_GNU_TYPE}-gcc" \
 		${topdir}/configure ${COMMON_CONF_FLAGS} ${STATIC_CONF_FLAGS} \
-		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE) \
-		CFLAGS="${CFLAGS} -fno-stack-protector"
+		--build=$(DEB_BUILD_GNU_TYPE) --host=$(DEB_HOST_GNU_TYPE)
 endif
 	mkdir -p ${STAMPSDIR}
 	touch ${CFGSTATICSTAMP}
@@ -259,11 +262,11 @@ ${BUILDSTDSTAMP}: ${CFGSTDSTAMP}
 ifneq ($(ismips),)
 	$(MAKE) -C ${mipsbuilddir}/util
 	$(MAKE) -C ${mipsbuilddir} \
-		CFLAGS="${CFLAGS} ${MIPS_CFLAGS}" \
+		CFLAGS="${CCOPTS} ${MIPS_CFLAGS}" \
 		LIB_SUBDIRS="lib/et lib/ext2fs" libs
 	$(MAKE) -C ${mipsbuilddir64}/util
 	$(MAKE) -C ${mipsbuilddir64} \
-		CFLAGS="${CFLAGS} ${MIPS_CFLAGS_64}" \
+		CFLAGS="${CCOPTS} ${MIPS_CFLAGS_64}" \
 		LIB_SUBDIRS="lib/et lib/ext2fs" libs
 endif
 
@@ -445,6 +448,12 @@ endif
 	$(INSTALL) -p -m 0644 debugfs/debug_cmds.ct \
 		${debdir}/ss-dev/usr/share/doc/libss${SS_SOVERSION}/examples
 
+	if test -f /etc/lsb-release && \
+		grep -q DISTRIB_ID=Ubuntu /etc/lsb-release; then \
+	$(INSTALL) -p -m 0644 e2fsck/e2fsck.conf.ubuntu \
+		${debdir}/e2fsprogs/etc/e2fsck.conf; \
+	fi
+
 	dh_installinfo -pcomerr-dev ${stdbuilddir}/lib/et/com_err.info
 	dh_installinfo -pe2fslibs-dev ${stdbuilddir}/doc/libext2fs.info
 
@@ -456,8 +465,7 @@ endif
 		-plibcomerr2-dbg -plibss2-dbg
 ifneq ($(UTIL_LINUX_NG),yes)
 	DH_OPTIONS= dh_installchangelogs -plibuuid${UUID_SOVERSION} \
-		-puuid-dev -puuid-runtime -puuid-runtime-dbg -plibuuid1-dbg \
-		-plibblkid${BLKID_SOVERSION} -plibblkid1-dbg
+		-puuid-dev -puuid-runtime -puuid-runtime-dbg -plibuuid1-dbg
 endif
 
 	dh_fixperms

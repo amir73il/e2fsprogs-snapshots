@@ -69,8 +69,7 @@ static int I_flag;
 static time_t last_check_time;
 static int print_label;
 static int max_mount_count, mount_count, mount_flags;
-static unsigned long interval;
-static blk64_t reserved_blocks;
+static unsigned long interval, reserved_blocks;
 static double reserved_ratio;
 static unsigned long resgid, resuid;
 static unsigned short errors;
@@ -119,8 +118,6 @@ static void usage(void)
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
-		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
 	EXT2_FEATURE_INCOMPAT_FILETYPE |
@@ -128,7 +125,6 @@ static __u32 ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
@@ -139,8 +135,6 @@ static __u32 ok_features[3] = {
 static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
-		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
@@ -148,7 +142,6 @@ static __u32 clear_ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
@@ -204,7 +197,7 @@ static void remove_journal_device(ext2_filsys fs)
 	}
 
 	/* Get the journal superblock */
-	if ((retval = io_channel_read_blk64(jfs->io, 1, -1024, buf))) {
+	if ((retval = io_channel_read_blk(jfs->io, 1, -1024, buf))) {
 		com_err(program_name, retval,
 			_("while reading journal superblock"));
 		goto no_valid_journal;
@@ -236,7 +229,7 @@ static void remove_journal_device(ext2_filsys fs)
 	jsb->s_nr_users = htonl(nr_users);
 
 	/* Write back the journal superblock */
-	if ((retval = io_channel_write_blk64(jfs->io, 1, -1024, buf))) {
+	if ((retval = io_channel_write_blk(jfs->io, 1, -1024, buf))) {
 		com_err(program_name, retval,
 			"while writing journal superblock.");
 		goto no_valid_journal;
@@ -256,7 +249,7 @@ no_valid_journal:
 	free(journal_path);
 }
 
-/* Helper function for remove_special_inode */
+/* Helper function for remove_journal_inode */
 static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
 			       int blockcnt EXT2FS_ATTR((unused)),
 			       void *private EXT2FS_ATTR((unused)))
@@ -265,75 +258,12 @@ static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
 	int	group;
 
 	block = *blocknr;
-	ext2fs_unmark_block_bitmap2(fs->block_map, block);
-	group = ext2fs_group_of_blk2(fs, block);
-	ext2fs_bg_free_blocks_count_set(fs, group, ext2fs_bg_free_blocks_count(fs, group) + 1);
+	ext2fs_unmark_block_bitmap(fs->block_map, block);
+	group = ext2fs_group_of_blk(fs, block);
+	fs->group_desc[group].bg_free_blocks_count++;
 	ext2fs_group_desc_csum_set(fs, group);
-	ext2fs_free_blocks_count_add(fs->super, 1);
+	fs->super->s_free_blocks_count++;
 	return 0;
-}
-
-/*
- * Remove a special inode from the filesystem
- */
-static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode)
-{
-	int retval = ext2fs_read_bitmaps(fs);
-	if (retval) {
-		com_err(program_name, retval,
-				_("while reading bitmaps"));
-		exit(1);
-	}
-	retval = ext2fs_block_iterate(fs, ino,
-			BLOCK_FLAG_READ_ONLY, NULL,
-			release_blocks_proc, NULL);
-	if (retval) {
-		com_err(program_name, retval,
-				_("while clearing inode"));
-		exit(1);
-	}
-	memset(inode, 0, sizeof(*inode));
-	ext2fs_mark_bb_dirty(fs);
-	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-}
-
-/*
- * Remove the exclude inode from the filesystem
- */
-static void remove_exclude_inode(ext2_filsys fs)
-{
-	struct ext2_group_desc *gd;
-	struct ext2_inode	inode;
-	ino_t			ino = EXT2_EXCLUDE_INO;
-	errcode_t		retval;
-	int i;
-
-	/*
-	 * reset bg_exclude_bitmap and bg_cow_bitmap to zero
-	 */
-	for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
-			i++, gd++) {
-		gd->bg_exclude_bitmap = 0;
-		gd->bg_cow_bitmap = 0;
-	}
-	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-	ext2fs_mark_super_dirty(fs);
-
-	retval = ext2fs_read_inode(fs, ino,  &inode);
-	if (retval) {
-		com_err(program_name, retval,
-			_("while reading exclude inode"));
-		exit(1);
-	}
-	
-	remove_special_inode(fs, ino, &inode);
-	
-	retval = ext2fs_write_inode(fs, ino, &inode);
-	if (retval) {
-		com_err(program_name, retval,
-			_("while writing exclude inode"));
-		exit(1);
-	}
 }
 
 /*
@@ -351,9 +281,25 @@ static void remove_journal_inode(ext2_filsys fs)
 			_("while reading journal inode"));
 		exit(1);
 	}
-	if (ino == EXT2_JOURNAL_INO)
-		remove_special_inode(fs, ino, &inode);
-	else
+	if (ino == EXT2_JOURNAL_INO) {
+		retval = ext2fs_read_bitmaps(fs);
+		if (retval) {
+			com_err(program_name, retval,
+				_("while reading bitmaps"));
+			exit(1);
+		}
+		retval = ext2fs_block_iterate(fs, ino,
+					      BLOCK_FLAG_READ_ONLY, NULL,
+					      release_blocks_proc, NULL);
+		if (retval) {
+			com_err(program_name, retval,
+				_("while clearing journal inode"));
+			exit(1);
+		}
+		memset(&inode, 0, sizeof(inode));
+		ext2fs_mark_bb_dirty(fs);
+		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+	} else
 		inode.i_flags &= ~EXT2_IMMUTABLE_FL;
 	retval = ext2fs_write_inode(fs, ino, &inode);
 	if (retval) {
@@ -380,31 +326,6 @@ static void update_mntopts(ext2_filsys fs, char *mntopts)
 	ext2fs_mark_super_dirty(fs);
 }
 
-static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask, int on)
-{
-	struct ext2_super_block *sb= fs->super;
-
-	if ((mount_flags & EXT2_MF_MOUNTED) &&
-		!(mount_flags & EXT2_MF_READONLY)) {
-		fprintf(stderr, _("The '%s' feature may only be "
-					"%s when the filesystem is\n"
-					"unmounted or mounted read-only.\n"),
-				e2p_feature2string(compat, mask),
-				on ? "set" : "cleared");
-		exit(1);
-	}
-	if (sb->s_feature_incompat &
-		EXT3_FEATURE_INCOMPAT_RECOVER) {
-		fprintf(stderr, _("The needs_recovery flag is set.  "
-					"Please run e2fsck before %s\n"
-					"the '%s' flag.\n"),
-				on ? "setting" : "clearing",
-				e2p_feature2string(compat, mask));
-		exit(1);
-	}
-	return 1;
-}
-
 /*
  * Update the feature set as provided by the user.
  */
@@ -414,7 +335,6 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	__u32		old_features[3];
 	int		type_err;
 	unsigned int	mask_err;
-	errcode_t retval;
 
 #define FEATURE_ON(type, mask) (!(old_features[(type)] & (mask)) && \
 				((&sb->s_feature_compat)[(type)] & (mask)))
@@ -422,29 +342,10 @@ static void update_feature_set(ext2_filsys fs, char *features)
 				 !((&sb->s_feature_compat)[(type)] & (mask)))
 #define FEATURE_CHANGED(type, mask) ((mask) & \
 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
-#define FEATURE_ON_SAFE(compat, mask) \
-	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
-#define FEATURE_OFF_SAFE(compat, mask) \
-	(FEATURE_OFF(compat, mask) && verify_clean_fs(fs, compat, mask, 0))
 
 	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
 	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
-
-	/* disallow changing features when filesystem has snapshots */
-	if (sb->s_feature_ro_compat & 
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
-		fputs(_("The filesystem has snapshots.  "
-				"Please clear the has_snapshot flag\n"
-				"before clearing/setting other filesystem flags.\n"), 
-				stderr);
-		ok_features[E2P_FEATURE_COMPAT] = 0;
-		ok_features[E2P_FEATURE_INCOMPAT] = 0;
-		ok_features[E2P_FEATURE_RO_INCOMPAT] = NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
-		clear_ok_features[E2P_FEATURE_COMPAT] = 0;
-		clear_ok_features[E2P_FEATURE_INCOMPAT] = 0;
-		clear_ok_features[E2P_FEATURE_RO_INCOMPAT] = NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
-	}
 
 	if (e2p_edit_feature2(features, &sb->s_feature_compat,
 			      ok_features, clear_ok_features,
@@ -499,80 +400,6 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		if (!journal_size)
 			journal_size = -1;
 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
-	}
-
-	if (FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) {
-		if (sb->s_feature_compat &
-		    EXT3_FEATURE_COMPAT_HAS_JOURNAL) {
-			/* update 'big_journal' flag according to existing journal size */
-			ext2fs_check_journal_size(fs);
-			if (!FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL))
-				fputs(_("the filesystem already has a journal.\n"
-							"Please remove it before changing "
-							"the big_journal flag.\n"), stderr);
-		}
-		else if (sb->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
-			/* create 'big_journal' */
-			if (!journal_size)
-				journal_size = -1;
-		}
-	}
-
-	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
-		remove_exclude_inode(fs);
-	}
-	else if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
-		retval = ext2fs_create_exclude_inode(fs);
-		if (retval) {
-			com_err(program_name, retval,
-					_("while creating exclude inode"));
-			exit(1);
-		}
-	}
-
-	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
-		if (sb->s_last_snapshot) {
-			sb->s_last_snapshot = 0;
-			sb->s_last_snapshot_id = 0;
- 			sb->s_snapshot_r_blocks_count = 0;
-			fputs(_("Disabling snapshots: done\n"), stderr);
-
-			if (sb->s_feature_compat & 
-					NEXT3_FEATURE_COMPAT_EXCLUDE_INODE) {
-				/* zero exclude bitmap blocks */
-				retval = ext2fs_create_exclude_inode(fs);
-				if (retval)
-					sb->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
-			}
-		}
-	}
-	else if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
-		if ((sb->s_feature_compat &
-		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
-			/* update 'big_journal' flag according to existing journal size */
-			ext2fs_check_journal_size(fs);
-		}
-		else if (!journal_size) {
-			/* create 'big_journal' */
-			journal_size = -1;
-			sb->s_feature_compat |= NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
-		}
-	
-		/* allocate/zero exclude bitmap blocks */
-		retval = ext2fs_create_exclude_inode(fs);
-		if (!retval)
-			sb->s_feature_compat |= NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
-
-		type_err = E2P_FEATURE_COMPAT;
-		if (!(sb->s_feature_compat &
-			(mask_err = NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) ||
-			!(sb->s_feature_compat &
-			(mask_err = NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)))
-			fprintf(stderr,_("Warning: the '%s' flag is not set.\n"
-				"For best snapshots performance, set the '%s' flag\n"
-				"before setting the 'has_snapshot' flag.\n"),
-				e2p_feature2string(type_err, mask_err),
-				e2p_feature2string(type_err, mask_err));
 	}
 
 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_DIR_INDEX)) {
@@ -1152,14 +979,14 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
 		return retval;
 
 	for (i = 0; i < fs->group_desc_count; i++) {
-		start_blk = ext2fs_inode_table_loc(fs, i) +
+		start_blk = fs->group_desc[i].bg_inode_table +
 					fs->inode_blocks_per_group;
 
-		end_blk = ext2fs_inode_table_loc(fs, i) +
+		end_blk = fs->group_desc[i].bg_inode_table +
 					new_ino_blks_per_grp;
 
 		for (j = start_blk; j < end_blk; j++) {
-			if (ext2fs_test_block_bitmap2(fs->block_map, j)) {
+			if (ext2fs_test_block_bitmap(fs->block_map, j)) {
 				/*
 				 * IF the block is a bad block we fail
 				 */
@@ -1168,20 +995,20 @@ static int get_move_bitmaps(ext2_filsys fs, int new_ino_blks_per_grp,
 					return ENOSPC;
 				}
 
-				ext2fs_mark_block_bitmap2(bmap, j);
+				ext2fs_mark_block_bitmap(bmap, j);
 			} else {
 				/*
 				 * We are going to use this block for
 				 * inode table. So mark them used.
 				 */
-				ext2fs_mark_block_bitmap2(fs->block_map, j);
+				ext2fs_mark_block_bitmap(fs->block_map, j);
 			}
 		}
 		needed_blocks += end_blk - start_blk;
 	}
 
 	ext2fs_badblocks_list_free(bb_list);
-	if (needed_blocks > ext2fs_free_blocks_count(fs->super))
+	if (needed_blocks > fs->super->s_free_blocks_count)
 		return ENOSPC;
 
 	return 0;
@@ -1191,9 +1018,9 @@ static int ext2fs_is_meta_block(ext2_filsys fs, blk_t blk)
 {
 	dgrp_t group;
 	group = ext2fs_group_of_blk(fs, blk);
-	if (ext2fs_block_bitmap_loc(fs, group) == blk)
+	if (fs->group_desc[group].bg_block_bitmap == blk)
 		return 1;
-	if (ext2fs_inode_bitmap_loc(fs, group) == blk)
+	if (fs->group_desc[group].bg_inode_bitmap == blk)
 		return 1;
 	return 0;
 }
@@ -1228,8 +1055,8 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
 		return retval;
 
 	for (new_blk = blk = fs->super->s_first_data_block;
-	     blk < ext2fs_blocks_count(fs->super); blk++) {
-		if (!ext2fs_test_block_bitmap2(bmap, blk))
+	     blk < fs->super->s_blocks_count; blk++) {
+		if (!ext2fs_test_block_bitmap(bmap, blk))
 			continue;
 
 		if (ext2fs_is_meta_block(fs, blk)) {
@@ -1241,7 +1068,7 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
 			 * fail
 			 */
 			group = ext2fs_group_of_blk(fs, blk);
-			goal = ext2fs_group_first_block2(fs, group);
+			goal = ext2fs_group_first_block(fs, group);
 			meta_data = 1;
 
 		} else {
@@ -1258,7 +1085,7 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
 		}
 
 		/* Mark this block as allocated */
-		ext2fs_mark_block_bitmap2(fs->block_map, new_blk);
+		ext2fs_mark_block_bitmap(fs->block_map, new_blk);
 
 		/* Add it to block move list */
 		retval = ext2fs_get_mem(sizeof(struct blk_move), &bmv);
@@ -1270,11 +1097,11 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
 
 		list_add(&(bmv->list), &blk_move_list);
 
-		retval = io_channel_read_blk64(fs->io, blk, 1, buf);
+		retval = io_channel_read_blk(fs->io, blk, 1, buf);
 		if (retval)
 			goto err_out;
 
-		retval = io_channel_write_blk64(fs->io, new_blk, 1, buf);
+		retval = io_channel_write_blk(fs->io, new_blk, 1, buf);
 		if (retval)
 			goto err_out;
 	}
@@ -1309,7 +1136,7 @@ static int process_block(ext2_filsys fs EXT2FS_ATTR((unused)),
 	blk_t new_blk;
 	ext2fs_block_bitmap bmap = (ext2fs_block_bitmap) priv_data;
 
-	if (!ext2fs_test_block_bitmap2(bmap, *block_nr))
+	if (!ext2fs_test_block_bitmap(bmap, *block_nr))
 		return 0;
 	new_blk = translate_block(*block_nr);
 	if (new_blk) {
@@ -1358,14 +1185,13 @@ static int inode_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
 		 * Do we need to fix this ??
 		 */
 
-		if (ext2fs_file_acl_block(&inode) &&
-		    ext2fs_test_block_bitmap2(bmap,
-					      ext2fs_file_acl_block(&inode))) {
-			blk = translate_block(ext2fs_file_acl_block(&inode));
+		if (inode.i_file_acl &&
+		    ext2fs_test_block_bitmap(bmap, inode.i_file_acl)) {
+			blk = translate_block(inode.i_file_acl);
 			if (!blk)
 				continue;
 
-			ext2fs_file_acl_block_set(&inode, blk);
+			inode.i_file_acl = blk;
 
 			/*
 			 * Write the inode to disk so that inode table
@@ -1403,20 +1229,20 @@ static int group_desc_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
 	blk_t blk, new_blk;
 
 	for (i = 0; i < fs->group_desc_count; i++) {
-		blk = ext2fs_block_bitmap_loc(fs, i);
-		if (ext2fs_test_block_bitmap2(bmap, blk)) {
+		blk = fs->group_desc[i].bg_block_bitmap;
+		if (ext2fs_test_block_bitmap(bmap, blk)) {
 			new_blk = translate_block(blk);
 			if (!new_blk)
 				continue;
-			ext2fs_block_bitmap_loc_set(fs, i, new_blk);
+			fs->group_desc[i].bg_block_bitmap = new_blk;
 		}
 
-		blk = ext2fs_inode_bitmap_loc(fs, i);
-		if (ext2fs_test_block_bitmap2(bmap, blk)) {
+		blk = fs->group_desc[i].bg_inode_bitmap;
+		if (ext2fs_test_block_bitmap(bmap, blk)) {
 			new_blk = translate_block(blk);
 			if (!new_blk)
 				continue;
-			ext2fs_inode_bitmap_loc_set(fs, i, new_blk);
+			fs->group_desc[i].bg_inode_bitmap = new_blk;
 		}
 	}
 	return 0;
@@ -1456,8 +1282,8 @@ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
 	tmp_new_itable = new_itable;
 
 	for (i = 0; i < fs->group_desc_count; i++) {
-		blk = ext2fs_inode_table_loc(fs, i);
-		retval = io_channel_read_blk64(fs->io, blk,
+		blk = fs->group_desc[i].bg_inode_table;
+		retval = io_channel_read_blk(fs->io, blk,
 				fs->inode_blocks_per_group, old_itable);
 		if (retval)
 			goto err_out;
@@ -1476,7 +1302,7 @@ static int expand_inode_table(ext2_filsys fs, unsigned long new_ino_size)
 		old_itable = tmp_old_itable;
 		new_itable = tmp_new_itable;
 
-		retval = io_channel_write_blk64(fs->io, blk,
+		retval = io_channel_write_blk(fs->io, blk,
 					new_ino_blks_per_grp, new_itable);
 		if (retval)
 			goto err_out;
@@ -1509,21 +1335,21 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 	 * First calculate the block statistics
 	 */
 	for (blk = fs->super->s_first_data_block;
-	     blk < ext2fs_blocks_count(fs->super); blk++) {
-		if (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk)) {
+	     blk < fs->super->s_blocks_count; blk++) {
+		if (!ext2fs_fast_test_block_bitmap(fs->block_map, blk)) {
 			group_free++;
 			total_free++;
 		}
 		count++;
 		if ((count == fs->super->s_blocks_per_group) ||
-		    (blk == ext2fs_blocks_count(fs->super)-1)) {
-			ext2fs_bg_free_blocks_count_set(fs, group++,
-							group_free);
+		    (blk == fs->super->s_blocks_count-1)) {
+			fs->group_desc[group++].bg_free_blocks_count =
+				group_free;
 			count = 0;
 			group_free = 0;
 		}
 	}
-	ext2fs_free_blocks_count_set(fs->super, total_free);
+	fs->super->s_free_blocks_count = total_free;
 
 	/*
 	 * Next, calculate the inode statistics
@@ -1535,15 +1361,15 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 
 	/* Protect loop from wrap-around if s_inodes_count maxed */
 	for (ino = 1; ino <= fs->super->s_inodes_count && ino > 0; ino++) {
-		if (!ext2fs_fast_test_inode_bitmap2(fs->inode_map, ino)) {
+		if (!ext2fs_fast_test_inode_bitmap(fs->inode_map, ino)) {
 			group_free++;
 			total_free++;
 		}
 		count++;
 		if ((count == fs->super->s_inodes_per_group) ||
 		    (ino == fs->super->s_inodes_count)) {
-			ext2fs_bg_free_inodes_count_set(fs, group++,
-							group_free);
+			fs->group_desc[group++].bg_free_inodes_count =
+				group_free;
 			count = 0;
 			group_free = 0;
 		}
@@ -1831,22 +1657,23 @@ retry_open:
 		       interval);
 	}
 	if (m_flag) {
-		ext2fs_r_blocks_count_set(sb, reserved_ratio *
-					  ext2fs_blocks_count(sb) / 100.0);
+		sb->s_r_blocks_count = (unsigned int) (reserved_ratio *
+					sb->s_blocks_count / 100.0);
 		ext2fs_mark_super_dirty(fs);
-		printf (_("Setting reserved blocks percentage to %g%% (%llu blocks)\n"),
-			reserved_ratio, ext2fs_r_blocks_count(sb));
+		printf(_("Setting reserved blocks percentage to %g%% "
+			 "(%u blocks)\n"),
+		       reserved_ratio, sb->s_r_blocks_count);
 	}
 	if (r_flag) {
-		if (reserved_blocks >= ext2fs_blocks_count(sb)/2) {
+		if (reserved_blocks >= sb->s_blocks_count/2) {
 			com_err(program_name, 0,
-				_("reserved blocks count is too big (%llu)"),
+				_("reserved blocks count is too big (%lu)"),
 				reserved_blocks);
 			exit(1);
 		}
-		ext2fs_r_blocks_count_set(sb, reserved_blocks);
+		sb->s_r_blocks_count = reserved_blocks;
 		ext2fs_mark_super_dirty(fs);
-		printf(_("Setting reserved blocks count to %llu\n"),
+		printf(_("Setting reserved blocks count to %lu\n"),
 		       reserved_blocks);
 	}
 	if (s_flag == 1) {
@@ -1964,10 +1791,8 @@ retry_open:
 		}
 	}
 
-	if (l_flag) {
-		ext2fs_check_journal_size(fs);
+	if (l_flag)
 		list_super(sb);
-	}
 	if (stride_set) {
 		sb->s_raid_stride = stride;
 		ext2fs_mark_super_dirty(fs);

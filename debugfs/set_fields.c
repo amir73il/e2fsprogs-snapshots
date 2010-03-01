@@ -112,11 +112,7 @@ static struct field_set_info super_fields[] = {
 	{ "journal_uuid", &set_sb.s_journal_uuid, 16, parse_uuid },
 	{ "journal_inum", &set_sb.s_journal_inum, 4, parse_uint },
 	{ "journal_dev", &set_sb.s_journal_dev, 4, parse_uint },
-	{ "journal_blocks", &set_sb.s_journal_blocks, 4, parse_uint },
 	{ "last_orphan", &set_sb.s_last_orphan, 4, parse_uint },
-	{ "last_snapshot", &set_sb.s_last_snapshot, 4, parse_uint },
-	{ "last_snapshot_id", &set_sb.s_last_snapshot_id, 4, parse_uint },
-	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count, 4, parse_uint },
 	{ "hash_seed", &set_sb.s_hash_seed, 16, parse_uuid },
 	{ "def_hash_version", &set_sb.s_def_hash_version, 1, parse_hashalg },
 	{ "jnl_backup_type", &set_sb.s_jnl_backup_type, 1, parse_uint },
@@ -128,7 +124,6 @@ static struct field_set_info super_fields[] = {
 	  17 },
 	{ "blocks_count_hi", &set_sb.s_blocks_count_hi, 4, parse_uint },
 	{ "r_blocks_count_hi", &set_sb.s_r_blocks_count_hi, 4, parse_uint },
-	{ "free_blocks_hi", &set_sb.s_free_blocks_hi, 4, parse_uint },
 	{ "min_extra_isize", &set_sb.s_min_extra_isize, 2, parse_uint },
 	{ "want_extra_isize", &set_sb.s_want_extra_isize, 2, parse_uint },
 	{ "flags", &set_sb.s_flags, 4, parse_uint },
@@ -187,8 +182,7 @@ static struct field_set_info ext2_bg_fields[] = {
 	{ "free_inodes_count", &set_gd.bg_free_inodes_count, 2, parse_uint },
 	{ "used_dirs_count", &set_gd.bg_used_dirs_count, 2, parse_uint },
 	{ "flags", &set_gd.bg_flags, 2, parse_uint },
-	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap, 4, parse_uint },
-	{ "cow_bitmap", &set_gd.bg_cow_bitmap, 4, parse_uint },
+	{ "reserved", &set_gd.bg_reserved, 2, parse_uint, FLAG_ARRAY, 2 },
 	{ "itable_unused", &set_gd.bg_itable_unused, 2, parse_uint },
 	{ "checksum", &set_gd.bg_checksum, 2, parse_gd_csum },
 	{ 0, 0, 0, 0 }
@@ -420,12 +414,9 @@ static errcode_t parse_gd_csum(struct field_set_info *info, char *arg)
 
 	if (strcmp(arg, "calc") == 0) {
 		ext2fs_group_desc_csum_set(current_fs, set_bg);
-		memcpy(&set_gd, ext2fs_group_desc(current_fs,
-					current_fs->group_desc,
-					set_bg),
-			sizeof(set_gd));
+		set_gd = current_fs->group_desc[set_bg];
 		printf("Checksum set to 0x%04x\n",
-		       ext2fs_bg_checksum(current_fs, set_bg));
+		       current_fs->group_desc[set_bg].bg_checksum);
 		return 0;
 	}
 
@@ -578,14 +569,10 @@ void do_set_block_group_descriptor(int argc, char *argv[])
 		return;
 	}
 
-	memcpy(&set_gd, ext2fs_group_desc(current_fs,
-				current_fs->group_desc, set_bg),
-		sizeof(set_gd));
+	set_gd = current_fs->group_desc[set_bg];
 
 	if (ss->func(ss, argv[3]) == 0) {
-		memcpy(ext2fs_group_desc(current_fs,
-				current_fs->group_desc, set_bg),
-		       &set_gd, sizeof(set_gd));
+		current_fs->group_desc[set_bg] = set_gd;
 		ext2fs_mark_super_dirty(current_fs);
 	}
 }

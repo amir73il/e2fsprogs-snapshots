@@ -253,16 +253,8 @@ static int is_swap_device(const char *file)
 	if (!(f = fopen("/proc/swaps", "r")))
 		return 0;
 	/* Skip the first line */
-	if (!fgets(buf, sizeof(buf), f))
-		goto leave;
-	if (*buf && strncmp(buf, "Filename\t", 9))
-		/* Linux <=2.6.19 contained a bug in the /proc/swaps
-		 * code where the header would not be displayed
-		 */
-		goto valid_first_line;
-
+	if (fgets(buf, sizeof(buf), f))
 	while (fgets(buf, sizeof(buf), f)) {
-valid_first_line:
 		if ((cp = strchr(buf, ' ')) != NULL)
 			*cp = 0;
 		if ((cp = strchr(buf, '\t')) != NULL)
@@ -280,8 +272,6 @@ valid_first_line:
 		}
 #endif 	/* __GNU__ */
 	}
-
-leave:
 	fclose(f);
 	return ret;
 }
@@ -361,7 +351,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	add_error_table(&et_ext2_error_table);
 	mntpt[0] = 0;
 	retval = ext2fs_check_mount_point(argv[1], &mount_flags,
 					  mntpt, sizeof(mntpt));

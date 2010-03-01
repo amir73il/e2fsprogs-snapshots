@@ -50,7 +50,6 @@ FSCK_OBJS=	fsck.o base_device.o ismounted.o
 BLKID_OBJS=	blkid.o
 FILEFRAG_OBJS=	filefrag.o
 E2UNDO_OBJS=  e2undo.o
-E4DEFRAG_OBJS=	e4defrag.o
 E2FREEFRAG_OBJS= e2freefrag.o
 
 PROFILED_TUNE2FS_OBJS=	profiled/tune2fs.o profiled/util.o
@@ -69,7 +68,7 @@ PROFILED_FSCK_OBJS=	profiled/fsck.o profiled/base_device.o \
 PROFILED_BLKID_OBJS=	profiled/blkid.o
 PROFILED_FILEFRAG_OBJS=	profiled/filefrag.o
 PROFILED_E2UNDO_OBJS=	profiled/e2undo.o
-PROFILED_E4DEFRAG_OBJS=	profiled/e4defrag.o
+
 
 XTRA_CFLAGS=	-I$(srcdir)/../e2fsck -I.
 
@@ -100,12 +99,12 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
 @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
 
 all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
-	$(FMANPAGES) $(LPROGS) e4defrag
+	$(FMANPAGES) $(LPROGS)
 
 @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
 	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
 	logsave.profiled filefrag.profiled uuidgen.profiled uuidd.profiled \
-	e2image.profiled e4defrag.profiled
+	e2image.profiled
 
 profiled:
 @PROFILE_CMT@	$(E) "	MKDIR $@"
@@ -127,7 +126,7 @@ profile.o:
 
 findsuper: findsuper.o
 	$(E) "	LD $@"
-	$(Q) $(CC) $(ALL_LDFLAGS) -o findsuper findsuper.o $(LIBS)
+	$(Q) $(CC) $(ALL_LDFLAGS) -o findsuper findsuper.o
 
 partinfo: partinfo.o
 	$(E) "	LD $@"
@@ -191,15 +190,6 @@ e2undo.profiled: $(PROFILED_E2UNDO_OBJS) $(PROFILED_DEPLIBS)
 	$(E) "	LD $@"
 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e2undo.profiled \
 		$(PROFILED_E2UNDO_OBJS) $(PROFILED_LIBS) $(LIBINTL)
-
-e4defrag: $(E4DEFRAG_OBJS) $(DEPLIBS)
-	$(E) "	LD $@"
-	$(Q) $(CC) $(ALL_LDFLAGS) -o e4defrag $(E4DEFRAG_OBJS) $(LIBS)
-
-e4defrag.profiled: $(PROFILED_E4DEFRAG_OBJS) $(PROFILED_DEPLIBS)
-	$(E) "	LD $@"
-	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o e4defrag.profiled \
-		$(PROFILED_E4DEFRAG_OBJS) $(PROFILED_LIBS)
 
 base_device: base_device.c
 	$(E) "	LD $@"
@@ -347,10 +337,6 @@ findfs.8: $(DEP_SUBSTITUTE) $(srcdir)/findfs.8.in
 e2image.8: $(DEP_SUBSTITUTE) $(srcdir)/e2image.8.in
 	$(E) "	SUBST $@"
 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2image.8.in e2image.8
-
-e4defrag.8: $(DEP_SUBSTITUTE) $(srcdir)/e4defrag.8.in
-	$(E) "	SUBST $@"
-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e4defrag.8.in e4defrag.8
 
 dumpe2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/dumpe2fs.8.in 
 	$(E) "	SUBST $@"
@@ -579,79 +565,73 @@ distclean: clean
 #
 tune2fs.o: $(srcdir)/tune2fs.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
- $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/jfs_user.h \
- $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
- $(top_srcdir)/lib/ext2fs/kernel-list.h $(srcdir)/util.h \
- $(top_srcdir)/version.h $(srcdir)/nls-enable.h
+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
+ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
+ $(top_builddir)/lib/ext2fs/ext2_err.h $(top_srcdir)/lib/ext2fs/bitops.h \
+ $(top_srcdir)/lib/uuid/uuid.h $(top_srcdir)/lib/e2p/e2p.h \
+ $(srcdir)/jfs_user.h $(top_srcdir)/lib/ext2fs/kernel-jbd.h \
+ $(top_srcdir)/lib/ext2fs/jfs_compat.h $(top_srcdir)/lib/ext2fs/kernel-list.h \
+ $(srcdir)/util.h $(top_srcdir)/lib/blkid/blkid.h \
+ $(top_builddir)/lib/blkid/blkid_types.h $(top_srcdir)/version.h \
+ $(srcdir)/nls-enable.h
 mklost+found.o: $(srcdir)/mklost+found.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/version.h \
  $(srcdir)/nls-enable.h
 mke2fs.o: $(srcdir)/mke2fs.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/et/com_err.h \
- $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
- $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
- $(srcdir)/util.h $(srcdir)/../e2fsck/profile.h prof_err.h \
- $(top_srcdir)/version.h $(srcdir)/nls-enable.h
-chattr.o: $(srcdir)/chattr.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
- $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/et/com_err.h \
- $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/version.h $(srcdir)/nls-enable.h
-lsattr.o: $(srcdir)/lsattr.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
- $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/et/com_err.h \
- $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/version.h $(srcdir)/nls-enable.h
-dumpe2fs.o: $(srcdir)/dumpe2fs.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
- $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
+ $(top_srcdir)/lib/uuid/uuid.h $(top_srcdir)/lib/e2p/e2p.h \
+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
  $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+ $(top_srcdir)/lib/ext2fs/bitops.h $(srcdir)/util.h \
+ $(srcdir)/../e2fsck/profile.h prof_err.h $(top_srcdir)/version.h \
+ $(srcdir)/nls-enable.h
+chattr.o: $(srcdir)/chattr.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/et/com_err.h \
+ $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+ $(top_srcdir)/version.h $(srcdir)/nls-enable.h
+lsattr.o: $(srcdir)/lsattr.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/et/com_err.h \
+ $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+ $(top_srcdir)/version.h $(srcdir)/nls-enable.h
+dumpe2fs.o: $(srcdir)/dumpe2fs.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
+ $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
+ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
+ $(top_builddir)/lib/ext2fs/ext2_err.h $(top_srcdir)/lib/ext2fs/bitops.h \
  $(top_srcdir)/lib/e2p/e2p.h $(srcdir)/jfs_user.h \
  $(top_srcdir)/lib/ext2fs/kernel-jbd.h $(top_srcdir)/lib/ext2fs/jfs_compat.h \
- $(top_srcdir)/lib/ext2fs/kernel-list.h $(top_srcdir)/version.h \
- $(srcdir)/nls-enable.h
+ $(top_srcdir)/lib/ext2fs/kernel-list.h $(top_srcdir)/lib/uuid/uuid.h \
+ $(top_srcdir)/version.h $(srcdir)/nls-enable.h
 badblocks.o: $(srcdir)/badblocks.c $(top_srcdir)/lib/et/com_err.h \
  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_srcdir)/lib/ext2fs/ext3_extents.h \
- $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
+ $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
+ $(top_builddir)/lib/ext2fs/ext2_err.h $(top_srcdir)/lib/ext2fs/bitops.h \
  $(srcdir)/nls-enable.h
 fsck.o: $(srcdir)/fsck.c $(top_srcdir)/version.h $(srcdir)/nls-enable.h \
- $(srcdir)/fsck.h
+ $(srcdir)/fsck.h $(top_srcdir)/lib/blkid/blkid.h \
+ $(top_builddir)/lib/blkid/blkid_types.h
 util.o: $(srcdir)/util.c $(top_srcdir)/lib/et/com_err.h \
  $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
- $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
- $(srcdir)/nls-enable.h $(srcdir)/util.h
-uuidgen.o: $(srcdir)/uuidgen.c $(srcdir)/nls-enable.h
-blkid.o: $(srcdir)/blkid.c $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2_fs.h \
  $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h
+ $(top_srcdir)/lib/ext2fs/bitops.h $(srcdir)/nls-enable.h \
+ $(top_srcdir)/lib/blkid/blkid.h $(top_builddir)/lib/blkid/blkid_types.h \
+ $(srcdir)/util.h
+uuidgen.o: $(srcdir)/uuidgen.c $(top_srcdir)/lib/uuid/uuid.h \
+ $(srcdir)/nls-enable.h
+blkid.o: $(srcdir)/blkid.c $(top_srcdir)/lib/blkid/blkid.h \
+ $(top_builddir)/lib/blkid/blkid_types.h
 logsave.o: $(srcdir)/logsave.c
-filefrag.o: $(srcdir)/filefrag.c $(top_builddir)/lib/ext2fs/ext2_types.h \
- $(top_srcdir)/lib/ext2fs/fiemap.h
+e2freefrag.o: $(srcdir)/e2freefrag.c e2freefrag.h \
+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
+ $(top_srcdir)/lib/ext2fs/bitops.h
+filefrag.o: $(srcdir)/filefrag.c
 base_device.o: $(srcdir)/base_device.c $(srcdir)/fsck.h
-ismounted.o: $(srcdir)/ismounted.c $(srcdir)/fsck.h \
- $(top_srcdir)/lib/et/com_err.h
+ismounted.o: $(srcdir)/ismounted.c $(top_srcdir)/lib/et/com_err.h
 profile.o: $(srcdir)/../e2fsck/profile.c $(top_srcdir)/lib/et/com_err.h \
  $(srcdir)/../e2fsck/profile.h prof_err.h
-e2undo.o: $(srcdir)/e2undo.c $(top_srcdir)/lib/ext2fs/tdb.h \
- $(top_srcdir)/lib/ext2fs/ext2fs.h $(top_builddir)/lib/ext2fs/ext2_types.h \
- $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_srcdir)/lib/ext2fs/ext3_extents.h \
- $(top_srcdir)/lib/et/com_err.h $(top_srcdir)/lib/ext2fs/ext2_io.h \
- $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
- $(srcdir)/nls-enable.h
-e2freefrag.o: $(srcdir)/e2freefrag.c $(top_srcdir)/lib/ext2fs/ext2_fs.h \
- $(top_builddir)/lib/ext2fs/ext2_types.h $(top_srcdir)/lib/ext2fs/ext2fs.h \
- $(top_srcdir)/lib/ext2fs/ext3_extents.h $(top_srcdir)/lib/et/com_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
- $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/bitops.h \
- $(srcdir)/e2freefrag.h
+e2undo.o: $(srcdir)/e2undo.c $(top_srcdir)/lib/ext2fs/tdb.h

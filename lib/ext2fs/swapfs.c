@@ -59,11 +59,7 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
 	sb->s_reserved_gdt_blocks = ext2fs_swab16(sb->s_reserved_gdt_blocks);
 	sb->s_journal_inum = ext2fs_swab32(sb->s_journal_inum);
 	sb->s_journal_dev = ext2fs_swab32(sb->s_journal_dev);
-	sb->s_journal_blocks = ext2fs_swab32(sb->s_journal_blocks);
 	sb->s_last_orphan = ext2fs_swab32(sb->s_last_orphan);
-	sb->s_last_snapshot = ext2fs_swab32(sb->s_last_snapshot);
-	sb->s_last_snapshot_id = ext2fs_swab32(sb->s_last_snapshot_id);
-	sb->s_snapshot_r_blocks_count = ext2fs_swab32(sb->s_snapshot_r_blocks_count);
 	sb->s_desc_size = ext2fs_swab16(sb->s_desc_size);
 	sb->s_default_mount_opts = ext2fs_swab32(sb->s_default_mount_opts);
 	sb->s_first_meta_bg = ext2fs_swab32(sb->s_first_meta_bg);
@@ -77,24 +73,13 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
 	sb->s_kbytes_written = ext2fs_swab64(sb->s_kbytes_written);
 	for (i=0; i < 4; i++)
 		sb->s_hash_seed[i] = ext2fs_swab32(sb->s_hash_seed[i]);
-
-	/* if journal backup is for a valid extent-based journal... */
-	if (!ext2fs_extent_header_verify(sb->s_jnl_blocks,
-					 sizeof(sb->s_jnl_blocks))) {
-		/* ... swap only the journal i_size */
-		sb->s_jnl_blocks[16] = ext2fs_swab32(sb->s_jnl_blocks[16]);
-		/* and the extent data is not swapped on read */
-		return;
-	}
-
-	/* direct/indirect journal: swap it all */
 	for (i=0; i < 17; i++)
 		sb->s_jnl_blocks[i] = ext2fs_swab32(sb->s_jnl_blocks[i]);
+
 }
 
-void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
+void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
 {
-	/* Do the 32-bit parts first */
 	gdp->bg_block_bitmap = ext2fs_swab32(gdp->bg_block_bitmap);
 	gdp->bg_inode_bitmap = ext2fs_swab32(gdp->bg_inode_bitmap);
 	gdp->bg_inode_table = ext2fs_swab32(gdp->bg_inode_table);
@@ -102,33 +87,9 @@ void ext2fs_swap_group_desc2(ext2_filsys fs, struct ext2_group_desc *gdp)
 	gdp->bg_free_inodes_count = ext2fs_swab16(gdp->bg_free_inodes_count);
 	gdp->bg_used_dirs_count = ext2fs_swab16(gdp->bg_used_dirs_count);
 	gdp->bg_flags = ext2fs_swab16(gdp->bg_flags);
-	gdp->bg_exclude_bitmap = ext2fs_swab32(gdp->bg_exclude_bitmap);
-	gdp->bg_cow_bitmap = ext2fs_swab32(gdp->bg_cow_bitmap);
 	gdp->bg_itable_unused = ext2fs_swab16(gdp->bg_itable_unused);
 	gdp->bg_checksum = ext2fs_swab16(gdp->bg_checksum);
-	/* If we're 32-bit, we're done */
-	if (fs && (!fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT))
-		return;
-
-	/* Swap the 64-bit parts */
-	struct ext4_group_desc *gdp4 = (struct ext4_group_desc *) gdp;
-	gdp4->bg_block_bitmap_hi = ext2fs_swab32(gdp4->bg_block_bitmap_hi);
-	gdp4->bg_inode_bitmap_hi = ext2fs_swab32(gdp4->bg_inode_bitmap_hi);
-	gdp4->bg_inode_table_hi = ext2fs_swab32(gdp4->bg_inode_table_hi);
-	gdp4->bg_free_blocks_count_hi =
-		ext2fs_swab16(gdp4->bg_free_blocks_count_hi);
-	gdp4->bg_free_inodes_count_hi =
-		ext2fs_swab16(gdp4->bg_free_inodes_count_hi);
-	gdp4->bg_used_dirs_count_hi =
-		ext2fs_swab16(gdp4->bg_used_dirs_count_hi);
-	gdp4->bg_itable_unused_hi = ext2fs_swab16(gdp4->bg_itable_unused_hi);
 }
-
-void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
-{
-	return ext2fs_swap_group_desc2(0, gdp);
-}
-
 
 void ext2fs_swap_ext_attr_header(struct ext2_ext_attr_header *to_header,
 				 struct ext2_ext_attr_header *from_header)

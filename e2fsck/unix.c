@@ -113,9 +113,9 @@ static void show_stats(e2fsck_t	ctx)
 	inodes = fs->super->s_inodes_count;
 	inodes_used = (fs->super->s_inodes_count -
 		       fs->super->s_free_inodes_count);
-	blocks = ext2fs_blocks_count(fs->super);
-	blocks_used = (ext2fs_blocks_count(fs->super) -
-		       ext2fs_free_blocks_count(fs->super));
+	blocks = fs->super->s_blocks_count;
+	blocks_used = (fs->super->s_blocks_count -
+		       fs->super->s_free_blocks_count);
 
 	frag_percent_file = (10000 * ctx->fs_fragmented) / inodes_used;
 	frag_percent_file = (frag_percent_file + 5) / 10;
@@ -339,12 +339,11 @@ static void check_if_skip(e2fsck_t ctx)
 		fputs(_(", check forced.\n"), stdout);
 		return;
 	}
-	printf(_("%s: clean, %u/%u files, %llu/%llu blocks"), ctx->device_name,
+	printf(_("%s: clean, %u/%u files, %u/%u blocks"), ctx->device_name,
 	       fs->super->s_inodes_count - fs->super->s_free_inodes_count,
 	       fs->super->s_inodes_count,
-	       ext2fs_blocks_count(fs->super) -
-	       ext2fs_free_blocks_count(fs->super),
-	       ext2fs_blocks_count(fs->super));
+	       fs->super->s_blocks_count - fs->super->s_free_blocks_count,
+	       fs->super->s_blocks_count);
 	next_check = 100000;
 	if (fs->super->s_max_mnt_count > 0) {
 		next_check = fs->super->s_max_mnt_count - fs->super->s_mnt_count;
@@ -927,7 +926,7 @@ static const char *my_ver_date = E2FSPROGS_DATE;
 
 int main (int argc, char *argv[])
 {
-	errcode_t	retval = 0, retval2 = 0, orig_retval = 0;
+	errcode_t	retval = 0, orig_retval = 0;
 	int		exit_value = FSCK_OK;
 	ext2_filsys	fs = 0;
 	io_manager	io_ptr;
@@ -940,7 +939,6 @@ int main (int argc, char *argv[])
 	int flags, run_result;
 	int journal_size;
 	int sysval, sys_page_size = 4096;
-	int old_bitmaps;
 	__u32 features[3];
 	char *cp;
 
@@ -1003,10 +1001,6 @@ restart:
 #endif
 		io_ptr = unix_io_manager;
 	flags = EXT2_FLAG_NOFREE_ON_ERROR;
-	profile_get_boolean(ctx->profile, "options", "old_bitmaps", 0, 0,
-			    &old_bitmaps);
-	if (!old_bitmaps)
-		flags |= EXT2_FLAG_64BITS;
 	if ((ctx->options & E2F_OPT_READONLY) == 0)
 		flags |= EXT2_FLAG_RW;
 	if ((ctx->mount_flags & EXT2_MF_MOUNTED) == 0)
@@ -1018,11 +1012,7 @@ restart:
 	    !(ctx->flags & E2F_FLAG_SB_SPECIFIED) &&
 	    ((retval == EXT2_ET_BAD_MAGIC) ||
 	     (retval == EXT2_ET_CORRUPT_SUPERBLOCK) ||
-	     ((retval == 0) && (retval2 = ext2fs_check_desc(fs))))) {
-		if (retval2 == ENOMEM) {
-			retval = retval2;
-			goto failure;
-		}
+	     ((retval == 0) && ext2fs_check_desc(fs)))) {
 		if (fs->flags & EXT2_FLAG_NOFREE_ON_ERROR) {
 			ext2fs_free(fs);
 			fs = NULL;
@@ -1061,7 +1051,6 @@ restart:
 		if (features[0] || features[1] || features[2])
 			goto print_unsupp_features;
 	}
-failure:
 	if (retval) {
 		if (orig_retval)
 			retval = orig_retval;
@@ -1295,7 +1284,6 @@ print_unsupp_features:
 		fatal_error(ctx, 0);
 	check_if_skip(ctx);
 	check_resize_inode(ctx);
-	check_exclude_inode(ctx);
 	if (bad_blocks_file)
 		read_bad_blocks_file(ctx, bad_blocks_file, replace_bad_blocks);
 	else if (cflag)
@@ -1333,7 +1321,7 @@ print_unsupp_features:
 	if (ctx->flags & E2F_FLAG_JOURNAL_INODE) {
 		if (fix_problem(ctx, PR_6_RECREATE_JOURNAL, &pctx)) {
 			if (journal_size < 1024)
-				journal_size = ext2fs_default_journal_size(ext2fs_blocks_count(fs->super));
+				journal_size = ext2fs_default_journal_size(fs->super->s_blocks_count);
 			if (journal_size < 0) {
 				fs->super->s_feature_compat &=
 					~EXT3_FEATURE_COMPAT_HAS_JOURNAL;

@@ -33,7 +33,7 @@ struct ext2_struct_inode_scan {
 	errcode_t		magic;
 	ext2_filsys		fs;
 	ext2_ino_t		current_inode;
-	blk64_t			current_block;
+	blk_t			current_block;
 	dgrp_t			current_group;
 	ext2_ino_t		inodes_left;
 	blk_t			blocks_left;
@@ -143,14 +143,14 @@ errcode_t ext2fs_open_inode_scan(ext2_filsys fs, int buffer_blocks,
 	scan->current_group = 0;
 	scan->groups_left = fs->group_desc_count - 1;
 	scan->inode_buffer_blocks = buffer_blocks ? buffer_blocks : 8;
-	scan->current_block = ext2fs_inode_table_loc(scan->fs,
-						     scan->current_group);
+	scan->current_block = scan->fs->
+		group_desc[scan->current_group].bg_inode_table;
 	scan->inodes_left = EXT2_INODES_PER_GROUP(scan->fs->super);
 	scan->blocks_left = scan->fs->inode_blocks_per_group;
 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
 		scan->inodes_left -=
-			ext2fs_bg_itable_unused(fs, scan->current_group);
+			fs->group_desc[scan->current_group].bg_itable_unused;
 		scan->blocks_left =
 			(scan->inodes_left +
 			 (fs->blocksize / scan->inode_size - 1)) *
@@ -233,8 +233,8 @@ static errcode_t get_next_blockgroup(ext2_inode_scan scan)
 	scan->current_group++;
 	scan->groups_left--;
 
-	scan->current_block = ext2fs_inode_table_loc(scan->fs,
-						     scan->current_group);
+	scan->current_block =fs->group_desc[scan->current_group].bg_inode_table;
+
 	scan->current_inode = scan->current_group *
 		EXT2_INODES_PER_GROUP(fs->super);
 
@@ -244,7 +244,7 @@ static errcode_t get_next_blockgroup(ext2_inode_scan scan)
 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
 		scan->inodes_left -=
-			ext2fs_bg_itable_unused(fs, scan->current_group);
+			fs->group_desc[scan->current_group].bg_itable_unused;
 		scan->blocks_left =
 			(scan->inodes_left +
 			 (fs->blocksize / scan->inode_size - 1)) *
@@ -365,7 +365,7 @@ static errcode_t get_next_blocks(ext2_inode_scan scan)
 		memset(scan->inode_buffer, 0,
 		       (size_t) num_blocks * scan->fs->blocksize);
 	} else {
-		retval = io_channel_read_blk64(scan->fs->io,
+		retval = io_channel_read_blk(scan->fs->io,
 					     scan->current_block,
 					     (int) num_blocks,
 					     scan->inode_buffer);
@@ -435,8 +435,8 @@ errcode_t ext2fs_get_next_inode_full(ext2_inode_scan scan, ext2_ino_t *ino,
 	 * they can be done for block group #0.
 	 */
 	if ((scan->scan_flags & EXT2_SF_DO_LAZY) &&
-	    (ext2fs_bg_flags_test(scan->fs, scan->current_group, EXT2_BG_INODE_UNINIT)
-	     ))
+	    (scan->fs->group_desc[scan->current_group].bg_flags &
+	     EXT2_BG_INODE_UNINIT))
 		goto force_new_group;
 	if (scan->inodes_left == 0)
 		goto force_new_group;
@@ -569,9 +569,9 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
 		offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
 			EXT2_INODE_SIZE(fs->super);
 		block = offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
-		if (!ext2fs_inode_table_loc(fs, (unsigned) group))
+		if (!fs->group_desc[(unsigned)group].bg_inode_table)
 			return EXT2_ET_MISSING_INODE_TABLE;
-		block_nr = ext2fs_inode_table_loc(fs, group) +
+		block_nr = fs->group_desc[(unsigned)group].bg_inode_table +
 			block;
 		io = fs->io;
 	}
@@ -588,7 +588,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
 			clen = fs->blocksize - offset;
 
 		if (block_nr != fs->icache->buffer_blk) {
-			retval = io_channel_read_blk64(io, block_nr, 1,
+			retval = io_channel_read_blk(io, block_nr, 1,
 						     fs->icache->buffer);
 			if (retval)
 				return retval;
@@ -688,11 +688,11 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
 	offset = ((ino - 1) % EXT2_INODES_PER_GROUP(fs->super)) *
 		EXT2_INODE_SIZE(fs->super);
 	block = offset >> EXT2_BLOCK_SIZE_BITS(fs->super);
-	if (!ext2fs_inode_table_loc(fs, (unsigned) group)) {
+	if (!fs->group_desc[(unsigned) group].bg_inode_table) {
 		retval = EXT2_ET_MISSING_INODE_TABLE;
 		goto errout;
 	}
-	block_nr = ext2fs_inode_table_loc(fs, (unsigned) group) + block;
+	block_nr = fs->group_desc[(unsigned) group].bg_inode_table + block;
 
 	offset &= (EXT2_BLOCK_SIZE(fs->super) - 1);
 
@@ -708,7 +708,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
 			clen = fs->blocksize - offset;
 
 		if (fs->icache->buffer_blk != block_nr) {
-			retval = io_channel_read_blk64(fs->io, block_nr, 1,
+			retval = io_channel_read_blk(fs->io, block_nr, 1,
 						     fs->icache->buffer);
 			if (retval)
 				goto errout;
@@ -719,7 +719,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
 		memcpy((char *) fs->icache->buffer + (unsigned) offset,
 		       ptr, clen);
 
-		retval = io_channel_write_blk64(fs->io, block_nr, 1,
+		retval = io_channel_write_blk(fs->io, block_nr, 1,
 					      fs->icache->buffer);
 		if (retval)
 			goto errout;

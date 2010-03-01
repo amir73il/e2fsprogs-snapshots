@@ -50,8 +50,6 @@
 #define EXT2_UNDEL_DIR_INO	 6	/* Undelete directory inode */
 #define EXT2_RESIZE_INO		 7	/* Reserved group descriptors inode */
 #define EXT2_JOURNAL_INO	 8	/* Journal inode */
-#define EXT2_EXCLUDE_INO	10	/* Snapshot exclude inode */
-
 
 /* First non-reserved inode for old ext2 filesystems */
 #define EXT2_GOOD_OLD_FIRST_INO	11
@@ -146,15 +144,11 @@ struct ext2_group_desc
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
 	__u16	bg_flags;
-	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
-	__u32	bg_cow_bitmap;		/* COW bitmap block of last snapshot */
+	__u32	bg_reserved[2];
 	__u16	bg_itable_unused;	/* Unused inodes count */
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
 
-/*
- * Structure of a blocks group descriptor
- */
 struct ext4_group_desc
 {
 	__u32	bg_block_bitmap;	/* Blocks bitmap block */
@@ -163,17 +157,17 @@ struct ext4_group_desc
 	__u16	bg_free_blocks_count;	/* Free blocks count */
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
-	__u16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
-	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
+	__u16	bg_flags;
+	__u32	bg_reserved[2];
 	__u16	bg_itable_unused;	/* Unused inodes count */
-	__u16	bg_checksum;		/* crc16(sb_uuid+group+desc) */
+	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 	__u32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
 	__u32	bg_inode_bitmap_hi;	/* Inodes bitmap block MSB */
 	__u32	bg_inode_table_hi;	/* Inodes table block MSB */
 	__u16	bg_free_blocks_count_hi;/* Free blocks count MSB */
 	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
 	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
-	__u16	bg_itable_unused_hi;	/* Unused inodes count MSB */
+	__u16   bg_pad;
 	__u32	bg_reserved2[3];
 };
 
@@ -279,20 +273,6 @@ struct ext2_dx_countlimit {
 #define EXT2_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
 #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
 #define EXT4_EXTENTS_FL 		0x00080000 /* Inode uses extents */
-/* snapshot dynamic flags */
-#define NEXT3_SNAPFILE_ZOMBIE_FL		0x00080000 /* snapshot is zombie */
-#define NEXT3_SNAPFILE_TAKE_FL			0x00100000 /* snapshot is being taken */
-#define NEXT3_SNAPFILE_ACTIVE_FL		0x00200000 /* snapshot is active */
-#define NEXT3_SNAPFILE_OPEN_FL			0x00400000 /* snapshot is mounted */
-#define NEXT3_SNAPFILE_INUSE_FL			0x00800000 /* snapshot is in-use */
-/* end of snapshot dymnamic flags */
-/* snapshot persistent flags */
-#define NEXT3_SNAPFILE_FL				0x01000000 /* snapshot file */
-#define NEXT3_SNAPFILE_ENABLED_FL		0x02000000 /* snapshot is enabled */
-#define NEXT3_SNAPFILE_DELETED_FL		0x04000000 /* snapshot is deleted */
-#define NEXT3_SNAPFILE_SHRUNK_FL		0x08000000 /* snapshot is shrunk */
-#define NEXT3_SNAPFILE_CLEAN_FL		0x10000000 /* snapshot is clean */
-/* end of snapshot persistent flags */
 #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
 
 #define EXT2_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
@@ -363,7 +343,7 @@ struct ext2_inode {
 	__u32	i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
 	__u32	i_generation;	/* File version (for NFS) */
 	__u32	i_file_acl;	/* File ACL */
-	__u32	i_size_high;	/* Formerly i_dir_acl, directory ACL */
+	__u32	i_dir_acl;	/* Directory ACL */
 	__u32	i_faddr;	/* Fragment address */
 	union {
 		struct {
@@ -410,7 +390,7 @@ struct ext2_inode_large {
 	__u32	i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
 	__u32	i_generation;	/* File version (for NFS) */
 	__u32	i_file_acl;	/* File ACL */
-	__u32	i_size_high;	/* Formerly i_dir_acl, directory ACL */
+	__u32	i_dir_acl;	/* Directory ACL */
 	__u32	i_faddr;	/* Fragment address */
 	union {
 		struct {
@@ -439,17 +419,17 @@ struct ext2_inode_large {
 	__u32	i_version_hi;	/* high 32 bits for 64-bit version */
 };
 
-#define i_dir_acl	i_size_high
+#define i_size_high	i_dir_acl
 
 #if defined(__KERNEL__) || defined(__linux__)
+#define i_reserved1	osd1.linux1.l_i_reserved1
 #define i_frag		osd2.linux2.l_i_frag
 #define i_fsize		osd2.linux2.l_i_fsize
 #define i_uid_low	i_uid
 #define i_gid_low	i_gid
 #define i_uid_high	osd2.linux2.l_i_uid_high
 #define i_gid_high	osd2.linux2.l_i_gid_high
-#define i_next_snapshot	osd1.linux1.l_i_version
-#define i_snapshot_blocks	osd2.linux2.l_i_reserved2
+#define i_reserved2	osd2.linux2.l_i_reserved2
 #else
 #if defined(__GNU__)
 
@@ -600,14 +580,7 @@ struct ext2_super_block {
 	__u8    s_reserved_char_pad;
 	__u16	s_reserved_pad;		/* Padding to next 32bits */
 	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
-	__u32   s_reserved[156];        /* Padding to the end of the block */
- 	/*
- 	 * Snapshots support valid if NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT is set.
- 	 */
-	__u32	s_journal_blocks;		/* nr of journal file blocks */
- 	__u32	s_snapshot_r_blocks_count;	/* Reserved snapshot blocks count */
- 	__u32	s_last_snapshot_id;	/* running snapshot ID */
- 	__u32	s_last_snapshot;	/* start of list of snapshot inodes */
+	__u32   s_reserved[160];        /* Padding to the end of the block */
 };
 
 /*
@@ -636,17 +609,6 @@ struct ext2_super_block {
 #define EXT3_JNL_BACKUP_BLOCKS	1
 
 /*
- * 'big journal' needs to accomodate extra snapshot COW credits
- * default size accomodates maximum possible COW credits
- * minimum required size accomodates the avarage COW credits
- */
-#define EXT3_DEF_JOURNAL_BLOCKS		32768
-#define NEXT3_AVG_COW_CREDITS		16
-#define NEXT3_MAX_COW_CREDITS		24
-#define NEXT3_MIN_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_AVG_COW_CREDITS)
-#define NEXT3_DEF_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_MAX_COW_CREDITS)
-
-/*
  * Feature set definitions
  */
 
@@ -664,8 +626,6 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_RESIZE_INODE	0x0010
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
-#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL	0x1000 /* Snapshots - big journal */
-#define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE	0x2000 /* Snapshots - exclude inode */
 
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
@@ -674,7 +634,6 @@ struct ext2_super_block {
 #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
 #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
 #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
-#define NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT    0x1000 /* Snapshots */
 
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
@@ -691,7 +650,6 @@ struct ext2_super_block {
 #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
 #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
-					 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
 

@@ -253,17 +253,10 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 {
 	int j_blocks;
 
-	j_blocks = ext2fs_default_journal_size(ext2fs_blocks_count(fs->super));
+	j_blocks = ext2fs_default_journal_size(fs->super->s_blocks_count);
 	if (j_blocks < 0) {
 		fputs(_("\nFilesystem too small for a journal\n"), stderr);
 		return 0;
-	}
-
-	if (fs->super->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
-		/* big journal requested */
-		j_blocks = ext2fs_big_journal_size(fs->super->s_blocks_count);
-		if (j_blocks < NEXT3_MIN_JOURNAL_BLOCKS)
-			fputs(_("\nFilesystem too small for a big journal\n"), stderr);
 	}
 
 	if (size > 0) {
@@ -276,13 +269,12 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 				j_blocks);
 			exit(1);
 		}
-		if ((unsigned) j_blocks > ext2fs_free_blocks_count(fs->super) / 2) {
+		if ((unsigned) j_blocks > fs->super->s_free_blocks_count / 2) {
 			fputs(_("\nJournal size too big for filesystem.\n"),
 			      stderr);
 			exit(1);
 		}
 	}
-
 	return j_blocks;
 }
 

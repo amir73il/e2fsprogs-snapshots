@@ -647,8 +647,8 @@ static int write_dir_block(ext2_filsys fs,
 	if (blockcnt >= wd->outdir->num) {
 		e2fsck_read_bitmaps(wd->ctx);
 		blk = *block_nr;
-		ext2fs_unmark_block_bitmap2(wd->ctx->block_found_map, blk);
-		ext2fs_block_alloc_stats2(fs, blk, -1);
+		ext2fs_unmark_block_bitmap(wd->ctx->block_found_map, blk);
+		ext2fs_block_alloc_stats(fs, blk, -1);
 		*block_nr = 0;
 		wd->cleared++;
 		return BLOCK_CHANGED;
@@ -812,12 +812,6 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
 	int			cur, max, all_dirs, dir_index, first = 1;
 
 	init_resource_track(&rtrack, ctx->fs->io);
-
- 	/* never rehash directories when scanning volume with next3 snapshots */
- 	if ((ctx->fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
- 		 ctx->fs->super->s_last_snapshot != 0)
- 		return;
- 
 	all_dirs = ctx->options & E2F_OPT_COMPRESS_DIRS;
 
 	if (!ctx->dirs_to_hash && !all_dirs)

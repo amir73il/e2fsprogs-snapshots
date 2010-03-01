@@ -145,8 +145,8 @@ errout:
  * programs that check for memory leaks happy.)
  */
 #define STRIDE_LENGTH 8
-errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
-			      blk64_t *ret_blk, int *ret_count)
+errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
+			     blk_t *ret_blk, int *ret_count)
 {
 	int		j, count;
 	static char	*buf;
@@ -179,7 +179,7 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
 			if (count > STRIDE_LENGTH)
 				count = STRIDE_LENGTH;
 		}
-		retval = io_channel_write_blk64(fs->io, blk, count, buf);
+		retval = io_channel_write_blk(fs->io, blk, count, buf);
 		if (retval) {
 			if (ret_count)
 				*ret_count = count;
@@ -190,18 +190,6 @@ errcode_t ext2fs_zero_blocks2(ext2_filsys fs, blk64_t blk, int num,
 		j += count; blk += count;
 	}
 	return 0;
-}
-
-errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_t blk, int num,
-			     blk_t *ret_blk, int *ret_count)
-{
-	blk64_t ret_blk2;
-	errcode_t retval;
-
-	retval = ext2fs_zero_blocks2(fs, blk, num, &ret_blk2, ret_count);
-	if (retval)
-		*ret_blk = (blk_t) ret_blk2;
-	return retval;
 }
 
 /*
@@ -243,7 +231,7 @@ static int mkjournal_proc(ext2_filsys	fs,
 	es->newblocks++;
 	retval = 0;
 	if (blockcnt <= 0)
-		retval = io_channel_write_blk64(fs->io, new_blk, 1, es->buf);
+		retval = io_channel_write_blk(fs->io, new_blk, 1, es->buf);
 	else {
 		if (es->zero_count) {
 			if ((es->blk_to_zero + es->zero_count == new_blk) &&
@@ -271,7 +259,7 @@ static int mkjournal_proc(ext2_filsys	fs,
 		return BLOCK_ABORT;
 	}
 	*blocknr = es->goal = new_blk;
-	ext2fs_block_alloc_stats2(fs, new_blk, +1);
+	ext2fs_block_alloc_stats(fs, new_blk, +1);
 
 	if (es->num_blocks == 0)
 		return (BLOCK_CHANGED | BLOCK_ABORT);
@@ -321,13 +309,13 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
 	 * the filesystem.  Pick a group that has the largest number
 	 * of free blocks.
 	 */
-	group = ext2fs_group_of_blk2(fs, (ext2fs_blocks_count(fs->super) -
+	group = ext2fs_group_of_blk(fs, (fs->super->s_blocks_count -
 					 fs->super->s_first_data_block) / 2);
 	log_flex = 1 << fs->super->s_log_groups_per_flex;
 	if (fs->super->s_log_groups_per_flex && (group > log_flex)) {
 		group = group & ~(log_flex - 1);
 		while ((group < fs->group_desc_count) &&
-		       ext2fs_bg_free_blocks_count(fs, group) == 0)
+		       fs->group_desc[group].bg_free_blocks_count == 0)
 			group++;
 		if (group == fs->group_desc_count)
 			group = 0;
@@ -337,8 +325,8 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
 	end = ((group+1) < fs->group_desc_count) ? group+1 : group;
 	group = start;
 	for (i=start+1; i <= end; i++)
-		if (ext2fs_bg_free_blocks_count(fs, i) >
-		    ext2fs_bg_free_blocks_count(fs, group))
+		if (fs->group_desc[i].bg_free_blocks_count >
+		    fs->group_desc[group].bg_free_blocks_count)
 			group = i;
 
 	es.goal = (fs->super->s_blocks_per_group * group) +
@@ -400,55 +388,6 @@ int ext2fs_default_journal_size(__u64 blocks)
 	return 32768;
 }
 
-/* 
- * Big journal is up to 24 times bigger than the default journal
- * to accomodate snapshot COW credits in transactions.
- * journal size is restricted to 1/32 of the filesystem size
- */
-int ext2fs_big_journal_size(__u64 blocks)
-{
-	int mega_blocks = blocks >> 20;
-	if (!mega_blocks)
-		return ext2fs_default_journal_size(blocks);
-
-	if (mega_blocks < NEXT3_MAX_COW_CREDITS)
-		/* 32K/1M = 1/32 of filesystem size */
-		return 32768*mega_blocks;
-	
-	/* 24 times bigger than the default journal */
-	return 32768*NEXT3_MAX_COW_CREDITS;
-}
-
-/*
- * Find the number of blocks in the journal inode, write it in super
- * and set the file system 'big_journal' feature accordingy
- */
-int ext2fs_check_journal_size(ext2_filsys fs)
-{
-	struct ext2_inode j_inode;
-	int j_blocks;
-
-	if (!(fs->super->s_feature_compat &
-		EXT3_FEATURE_COMPAT_HAS_JOURNAL) ||
-		!fs->super->s_journal_inum)
-		return 0;
-
-	if (ext2fs_read_inode(fs, fs->super->s_journal_inum, &j_inode))
-		return -1;
-
-	/* read journal inode size */
-	j_blocks = j_inode.i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
-	fs->super->s_journal_blocks = j_blocks;
-	
-	/* fix the 'big_journal' feature */
-	if (j_blocks >= NEXT3_MIN_JOURNAL_BLOCKS)
-		fs->super->s_feature_compat |= NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
-	else
-		fs->super->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
-
-	return j_blocks;
-}
-
 /*
  * This function adds a journal device to a filesystem
  */
@@ -472,8 +411,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
 	start = 1;
 	if (journal_dev->blocksize == 1024)
 		start++;
-	if ((retval = io_channel_read_blk64(journal_dev->io, start, -1024,
-					    buf)))
+	if ((retval = io_channel_read_blk(journal_dev->io, start, -1024, buf)))
 		return retval;
 
 	jsb = (journal_superblock_t *) buf;
@@ -498,7 +436,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
 	}
 
 	/* Writeback the journal superblock */
-	if ((retval = io_channel_write_blk64(journal_dev->io, start, -1024, buf)))
+	if ((retval = io_channel_write_blk(journal_dev->io, start, -1024, buf)))
 		return retval;
 
 	fs->super->s_journal_inum = 0;
@@ -556,33 +494,21 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
 			goto errout;
 
 		/* Get inode number of the journal file */
-		if (fstat(fd, &st) < 0) {
-			retval = errno;
+		if (fstat(fd, &st) < 0)
 			goto errout;
-		}
 
 #if defined(HAVE_CHFLAGS) && defined(UF_NODUMP)
 		retval = fchflags (fd, UF_NODUMP|UF_IMMUTABLE);
 #else
 #if HAVE_EXT2_IOCTLS
-		if (ioctl(fd, EXT2_IOC_GETFLAGS, &f) < 0) {
-			retval = errno;
-			goto errout;
-		}
-		f |= EXT2_NODUMP_FL | EXT2_IMMUTABLE_FL;
+		f = EXT2_NODUMP_FL | EXT2_IMMUTABLE_FL;
 		retval = ioctl(fd, EXT2_IOC_SETFLAGS, &f);
 #endif
 #endif
-		if (retval) {
-			retval = errno;
+		if (retval)
 			goto errout;
-		}
 
-		if (close(fd) < 0) {
-			retval = errno;
-			fd = -1;
-			goto errout;
-		}
+		close(fd);
 		journal_ino = st.st_ino;
 	} else {
 		if ((mount_flags & EXT2_MF_BUSY) &&
@@ -602,7 +528,6 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
 	       sizeof(fs->super->s_journal_uuid));
 	fs->super->s_feature_compat |= EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 
-	ext2fs_check_journal_size(fs);
 	ext2fs_mark_super_dirty(fs);
 	return 0;
 errout:

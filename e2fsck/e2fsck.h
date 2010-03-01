@@ -176,7 +176,6 @@ struct resource_track {
 #define E2F_FLAG_RESIZE_INODE	0x0400 /* Request to recreate resize inode */
 #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
-#define E2F_FLAG_EXCLUDE_INODE	0x2000 /* Request to recreate exclude inode */
 
 /*
  * Defines for indicating the e2fsck pass number
@@ -473,7 +472,6 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
 void check_super_block(e2fsck_t ctx);
 int check_backup_super_block(e2fsck_t ctx);
 void check_resize_inode(e2fsck_t ctx);
-void check_exclude_inode(e2fsck_t ctx);
 
 /* util.c */
 extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,

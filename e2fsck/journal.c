@@ -115,7 +115,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
 		if (rw == READ && !bh->b_uptodate) {
 			jfs_debug(3, "reading block %lu/%p\n",
 				  (unsigned long) bh->b_blocknr, (void *) bh);
-			retval = io_channel_read_blk64(bh->b_io,
+			retval = io_channel_read_blk(bh->b_io,
 						     bh->b_blocknr,
 						     1, bh->b_data);
 			if (retval) {
@@ -129,7 +129,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
 		} else if (rw == WRITE && bh->b_dirty) {
 			jfs_debug(3, "writing block %lu/%p\n",
 				  (unsigned long) bh->b_blocknr, (void *) bh);
-			retval = io_channel_write_blk64(bh->b_io,
+			retval = io_channel_write_blk(bh->b_io,
 						      bh->b_blocknr,
 						      1, bh->b_data);
 			if (retval) {
@@ -215,7 +215,7 @@ static int process_journal_block(ext2_filsys fs,
 	p = (struct process_block_struct *) priv_data;
 
 	if (blk < fs->super->s_first_data_block ||
-	    blk >= ext2fs_blocks_count(fs->super))
+	    blk >= fs->super->s_blocks_count)
 		return BLOCK_ABORT;
 
 	if (blockcnt >= 0)
@@ -409,7 +409,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
 			goto errout;
 		}
 
-		journal->j_maxlen = ext2fs_blocks_count(&jsuper);
+		journal->j_maxlen = jsuper.s_blocks_count;
 		start++;
 	}
 
@@ -1009,9 +1009,9 @@ void e2fsck_move_ext3_journal(e2fsck_t ctx)
 		goto err_out;
 
 	group = ext2fs_group_of_ino(fs, ino);
-	ext2fs_unmark_inode_bitmap2(fs->inode_map, ino);
+	ext2fs_unmark_inode_bitmap(fs->inode_map, ino);
 	ext2fs_mark_ib_dirty(fs);
-	ext2fs_bg_free_inodes_count_set(fs, group, ext2fs_bg_free_inodes_count(fs, group) + 1);
+	fs->group_desc[group].bg_free_inodes_count++;
 	ext2fs_group_desc_csum_set(fs, group);
 	fs->super->s_free_inodes_count++;
 	return;

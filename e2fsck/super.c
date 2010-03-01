@@ -77,14 +77,14 @@ static int release_inode_block(ext2_filsys fs,
 		return 0;
 
 	if ((blk < fs->super->s_first_data_block) ||
-	    (blk >= ext2fs_blocks_count(fs->super))) {
+	    (blk >= fs->super->s_blocks_count)) {
 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_BLOCK_NUM, pctx);
 	return_abort:
 		pb->abort = 1;
 		return BLOCK_ABORT;
 	}
 
-	if (!ext2fs_test_block_bitmap2(fs->block_map, blk)) {
+	if (!ext2fs_test_block_bitmap(fs->block_map, blk)) {
 		fix_problem(ctx, PR_0_ORPHAN_ALREADY_CLEARED_BLOCK, pctx);
 		goto return_abort;
 	}
@@ -103,7 +103,7 @@ static int release_inode_block(ext2_filsys fs,
 			int	i, limit;
 			blk_t	*bp;
 
-			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
+			pb->errcode = io_channel_read_blk(fs->io, blk, 1,
 							pb->buf);
 			if (pb->errcode)
 				goto return_abort;
@@ -125,13 +125,13 @@ static int release_inode_block(ext2_filsys fs,
 		 * it here.
 		 */
 		if ((blockcnt == pb->truncate_block) && pb->truncate_offset) {
-			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
+			pb->errcode = io_channel_read_blk(fs->io, blk, 1,
 							pb->buf);
 			if (pb->errcode)
 				goto return_abort;
 			memset(pb->buf + pb->truncate_offset, 0,
 			       fs->blocksize - pb->truncate_offset);
-			pb->errcode = io_channel_write_blk64(fs->io, blk, 1,
+			pb->errcode = io_channel_write_blk(fs->io, blk, 1,
 							 pb->buf);
 			if (pb->errcode)
 				goto return_abort;
@@ -141,7 +141,7 @@ static int release_inode_block(ext2_filsys fs,
 		retval |= BLOCK_CHANGED;
 	}
 
-	ext2fs_block_alloc_stats2(fs, blk, -1);
+	ext2fs_block_alloc_stats(fs, blk, -1);
 	return retval;
 }
 
@@ -197,8 +197,8 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
 	if (pb.truncated_blocks)
 		ext2fs_iblk_sub_blocks(fs, inode, pb.truncated_blocks);
 
-	if (ext2fs_file_acl_block(inode)) {
-		retval = ext2fs_adjust_ea_refcount(fs, ext2fs_file_acl_block(inode),
+	if (inode->i_file_acl) {
+		retval = ext2fs_adjust_ea_refcount(fs, inode->i_file_acl,
 						   block_buf, -1, &count);
 		if (retval == EXT2_ET_BAD_EA_BLOCK_NUM) {
 			retval = 0;
@@ -211,10 +211,8 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
 			return 1;
 		}
 		if (count == 0)
-			ext2fs_block_alloc_stats2(fs,
-						 ext2fs_file_acl_block(inode),
-						 -1);
-		ext2fs_file_acl_block_set(inode, 0);
+			ext2fs_block_alloc_stats(fs, inode->i_file_acl, -1);
+		inode->i_file_acl = 0;
 	}
 	return 0;
 }
@@ -230,11 +228,6 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct ext2_inode inode;
 	struct problem_context pctx;
 	char *block_buf;
-
-	/* never release orphan inodes when scanning volume with next3 snapshots */
-	if ((fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
-		 fs->super->s_last_snapshot != 0)
-		return 0;
 
 	if ((ino = fs->super->s_last_orphan) == 0)
 		return 0;
@@ -381,7 +374,7 @@ void check_resize_inode(e2fsck_t ctx)
 	if ((i < EXT2_N_BLOCKS) || !blk || !inode.i_links_count ||
 	    !(inode.i_mode & LINUX_S_IFREG) ||
 	    (blk < fs->super->s_first_data_block ||
-	     blk >= ext2fs_blocks_count(fs->super))) {
+	     blk >= fs->super->s_blocks_count)) {
 	resize_inode_invalid:
 		if (fix_problem(ctx, PR_0_RESIZE_INODE_INVALID, &pctx)) {
 			memset(&inode, 0, sizeof(inode));
@@ -431,87 +424,6 @@ cleanup:
  }
 
 /*
- * Check the exclude inode to make sure it is sane.  We check both for
- * the case where exclude bitmal is not enabled (in which case the
- * exclude inode should be cleared) as well as the case where exclude
- * bitmap is enabled.
- */
-void check_exclude_inode(e2fsck_t ctx)
-{
-	ext2_filsys fs = ctx->fs;
-	struct ext2_inode inode;
-	struct problem_context	pctx;
-	int		i;
-	blk_t		blk;
-	errcode_t	retval;
-
-	clear_problem_context(&pctx);
-
-	/* Read the exclude inode */
-	pctx.ino = EXT2_EXCLUDE_INO;
-	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);
-	if (retval) {
-		if (fs->super->s_feature_compat &
-		    NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
-			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
-		return;
-	}
-
-	/*
-	 * If the exclude inode feature isn't set, check to make sure
-	 * the exclude inode is cleared; then we're done.
-	 */
-	if (!(fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
-		for (i=0; i < EXT2_N_BLOCKS; i++) {
-			if (inode.i_block[i])
-				break;
-		}
-		if ((i < EXT2_N_BLOCKS) &&
-		    fix_problem(ctx, PR_0_CLEAR_EXCLUDE_INODE, &pctx)) {
-			memset(&inode, 0, sizeof(inode));
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
-					   "clear_exclude");
-		}
-		return;
-	}
-
-	/*
-	 * The exclude inode feature is enabled; check to make sure the
-	 * only block in use is the double indirect block
-	 */
-	blk = inode.i_block[EXT2_DIND_BLOCK];
-	for (i=0; i < EXT2_N_BLOCKS; i++) {
-		if (i != EXT2_DIND_BLOCK && inode.i_block[i])
-			break;
-	}
-	if ((i < EXT2_N_BLOCKS) || !blk || !inode.i_links_count ||
-	    !(inode.i_mode & LINUX_S_IFREG) ||
-	    (blk < fs->super->s_first_data_block ||
-	     blk >= fs->super->s_blocks_count)) {
-		if (fix_problem(ctx, PR_0_EXCLUDE_INODE_INVALID, &pctx)) {
-			memset(&inode, 0, sizeof(inode));
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
-					   "clear_exclude");
-			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
-		}
-	}	
-	else if (!(fs->super->s_feature_ro_compat & 
-		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
-		/* force check of exclude inode */
-		clear_problem_context(&pctx);
-		pctx.errcode = ext2fs_create_exclude_inode(fs);
-		if (pctx.errcode &&
-			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
-			memset(&inode, 0, sizeof(inode));
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
-					   "clear_exclude");
-			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
-		}
-	}
-}
-
-/*
  * This function checks the dirhash signed/unsigned hint if necessary.
  */
 static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
@@ -544,13 +456,14 @@ void check_super_block(e2fsck_t ctx)
 	ext2_filsys fs = ctx->fs;
 	blk_t	first_block, last_block;
 	struct ext2_super_block *sb = fs->super;
+	struct ext2_group_desc *gd;
 	problem_t	problem;
 	blk_t	blocks_per_group = fs->super->s_blocks_per_group;
 	blk_t	bpg_max;
 	int	inodes_per_block;
 	int	ipg_max;
 	int	inode_size;
-	int	accept_time_fudge;
+	int	buggy_init_scripts;
 	dgrp_t	i;
 	blk_t	should_be;
 	struct problem_context	pctx;
@@ -580,10 +493,10 @@ void check_super_block(e2fsck_t ctx)
 	 */
 	check_super_value(ctx, "inodes_count", sb->s_inodes_count,
 			  MIN_CHECK, 1, 0);
-	check_super_value(ctx, "blocks_count", ext2fs_blocks_count(sb),
+	check_super_value(ctx, "blocks_count", sb->s_blocks_count,
 			  MIN_CHECK, 1, 0);
 	check_super_value(ctx, "first_data_block", sb->s_first_data_block,
-			  MAX_CHECK, 0, ext2fs_blocks_count(sb));
+			  MAX_CHECK, 0, sb->s_blocks_count);
 	check_super_value(ctx, "log_block_size", sb->s_log_block_size,
 			  MIN_CHECK | MAX_CHECK, 0,
 			  EXT2_MAX_BLOCK_LOG_SIZE - EXT2_MIN_BLOCK_LOG_SIZE);
@@ -596,8 +509,8 @@ void check_super_block(e2fsck_t ctx)
 			  MIN_CHECK | MAX_CHECK, 8, bpg_max);
 	check_super_value(ctx, "inodes_per_group", sb->s_inodes_per_group,
 			  MIN_CHECK | MAX_CHECK, inodes_per_block, ipg_max);
-	check_super_value(ctx, "r_blocks_count", ext2fs_r_blocks_count(sb),
-			  MAX_CHECK, 0, ext2fs_blocks_count(sb) / 2);
+	check_super_value(ctx, "r_blocks_count", sb->s_r_blocks_count,
+			  MAX_CHECK, 0, sb->s_blocks_count / 2);
 	check_super_value(ctx, "reserved_gdt_blocks",
 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
 			  fs->blocksize/4);
@@ -618,8 +531,8 @@ void check_super_block(e2fsck_t ctx)
 	}
 
 	if ((ctx->flags & E2F_FLAG_GOT_DEVSIZE) &&
-	    (ctx->num_blocks < ext2fs_blocks_count(sb))) {
-		pctx.blk = ext2fs_blocks_count(sb);
+	    (ctx->num_blocks < sb->s_blocks_count)) {
+		pctx.blk = sb->s_blocks_count;
 		pctx.blk2 = ctx->num_blocks;
 		if (fix_problem(ctx, PR_0_FS_SIZE_WRONG, &pctx)) {
 			ctx->flags |= E2F_FLAG_ABORT;
@@ -668,106 +581,105 @@ void check_super_block(e2fsck_t ctx)
 	 * Verify the group descriptors....
 	 */
 	first_block = sb->s_first_data_block;
-	last_block = ext2fs_blocks_count(sb)-1;
+	last_block = sb->s_blocks_count-1;
 
 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-	for (i = 0; i < fs->group_desc_count; i++) {
+	for (i = 0, gd=fs->group_desc; i < fs->group_desc_count; i++, gd++) {
 		pctx.group = i;
 
 		if (!EXT2_HAS_INCOMPAT_FEATURE(fs->super,
 					       EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-			first_block = ext2fs_group_first_block2(fs, i);
-			last_block = ext2fs_group_last_block2(fs, i);
+			first_block = ext2fs_group_first_block(fs, i);
+			last_block = ext2fs_group_last_block(fs, i);
 		}
 
-		if ((ext2fs_block_bitmap_loc(fs, i) < first_block) ||
-		    (ext2fs_block_bitmap_loc(fs, i) > last_block)) {
-			pctx.blk = ext2fs_block_bitmap_loc(fs, i);
+		if ((gd->bg_block_bitmap < first_block) ||
+		    (gd->bg_block_bitmap > last_block)) {
+			pctx.blk = gd->bg_block_bitmap;
 			if (fix_problem(ctx, PR_0_BB_NOT_GROUP, &pctx))
-				ext2fs_block_bitmap_loc_set(fs, i, 0);
+				gd->bg_block_bitmap = 0;
 		}
-		if (ext2fs_block_bitmap_loc(fs, i) == 0) {
+		if (gd->bg_block_bitmap == 0) {
 			ctx->invalid_block_bitmap_flag[i]++;
 			ctx->invalid_bitmaps++;
 		}
-		if ((ext2fs_inode_bitmap_loc(fs, i) < first_block) ||
-		    (ext2fs_inode_bitmap_loc(fs, i) > last_block)) {
-			pctx.blk = ext2fs_inode_bitmap_loc(fs, i);
+		if ((gd->bg_inode_bitmap < first_block) ||
+		    (gd->bg_inode_bitmap > last_block)) {
+			pctx.blk = gd->bg_inode_bitmap;
 			if (fix_problem(ctx, PR_0_IB_NOT_GROUP, &pctx))
-				ext2fs_inode_bitmap_loc_set(fs, i, 0);
+				gd->bg_inode_bitmap = 0;
 		}
-		if (ext2fs_inode_bitmap_loc(fs, i) == 0) {
+		if (gd->bg_inode_bitmap == 0) {
 			ctx->invalid_inode_bitmap_flag[i]++;
 			ctx->invalid_bitmaps++;
 		}
-		if ((ext2fs_inode_table_loc(fs, i) < first_block) ||
-		    ((ext2fs_inode_table_loc(fs, i) +
+		if ((gd->bg_inode_table < first_block) ||
+		    ((gd->bg_inode_table +
 		      fs->inode_blocks_per_group - 1) > last_block)) {
-			pctx.blk = ext2fs_inode_table_loc(fs, i);
+			pctx.blk = gd->bg_inode_table;
 			if (fix_problem(ctx, PR_0_ITABLE_NOT_GROUP, &pctx))
-				ext2fs_inode_table_loc_set(fs, i, 0);
+				gd->bg_inode_table = 0;
 		}
-		if (ext2fs_inode_table_loc(fs, i) == 0) {
+		if (gd->bg_inode_table == 0) {
 			ctx->invalid_inode_table_flag[i]++;
 			ctx->invalid_bitmaps++;
 		}
-		free_blocks += ext2fs_bg_free_blocks_count(fs, i);
-		free_inodes += ext2fs_bg_free_inodes_count(fs, i);
+		free_blocks += gd->bg_free_blocks_count;
+		free_inodes += gd->bg_free_inodes_count;
 
-		if ((ext2fs_bg_free_blocks_count(fs, i) > sb->s_blocks_per_group) ||
-		    (ext2fs_bg_free_inodes_count(fs, i) > sb->s_inodes_per_group) ||
-		    (ext2fs_bg_used_dirs_count(fs, i) > sb->s_inodes_per_group))
+		if ((gd->bg_free_blocks_count > sb->s_blocks_per_group) ||
+		    (gd->bg_free_inodes_count > sb->s_inodes_per_group) ||
+		    (gd->bg_used_dirs_count > sb->s_inodes_per_group))
 			ext2fs_unmark_valid(fs);
 
 		should_be = 0;
 		if (!ext2fs_group_desc_csum_verify(fs, i)) {
 			if (fix_problem(ctx, PR_0_GDT_CSUM, &pctx)) {
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_INODE_UNINIT);
-				ext2fs_bg_itable_unused_set(fs, i, 0);
+				gd->bg_flags &=	~(EXT2_BG_BLOCK_UNINIT |
+				                  EXT2_BG_INODE_UNINIT);
+				gd->bg_itable_unused = 0;
 				should_be = 1;
 			}
 			ext2fs_unmark_valid(fs);
 		}
 
 		if (!csum_flag &&
-		    (ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) ||
-		     ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT) ||
-		     ext2fs_bg_itable_unused(fs, i) != 0)) {
+		    (gd->bg_flags &(EXT2_BG_BLOCK_UNINIT|EXT2_BG_INODE_UNINIT)||
+		     gd->bg_itable_unused != 0)){
 			if (fix_problem(ctx, PR_0_GDT_UNINIT, &pctx)) {
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_INODE_UNINIT);
-				ext2fs_bg_itable_unused_set(fs, i, 0);
+				gd->bg_flags &= ~(EXT2_BG_BLOCK_UNINIT |
+						  EXT2_BG_INODE_UNINIT);
+				gd->bg_itable_unused = 0;
 				should_be = 1;
 			}
 			ext2fs_unmark_valid(fs);
 		}
 
 		if (i == fs->group_desc_count - 1 &&
-		    ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT)) {
+		    gd->bg_flags & EXT2_BG_BLOCK_UNINIT) {
 			if (fix_problem(ctx, PR_0_BB_UNINIT_LAST, &pctx)) {
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
+				gd->bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
 				should_be = 1;
 			}
 			ext2fs_unmark_valid(fs);
 		}
 
-		if (ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
-		    !ext2fs_bg_flags_test(fs, i, EXT2_BG_INODE_UNINIT)) {
+		if (gd->bg_flags & EXT2_BG_BLOCK_UNINIT &&
+		    !(gd->bg_flags & EXT2_BG_INODE_UNINIT)) {
 			if (fix_problem(ctx, PR_0_BB_UNINIT_IB_INIT, &pctx)) {
-				ext2fs_bg_flags_clear(fs, i, EXT2_BG_BLOCK_UNINIT);
+				gd->bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
 				should_be = 1;
 			}
 			ext2fs_unmark_valid(fs);
 		}
 
 		if (csum_flag &&
-		    (ext2fs_bg_itable_unused(fs, i) > ext2fs_bg_free_inodes_count(fs, i) ||
-		     ext2fs_bg_itable_unused(fs, i) > sb->s_inodes_per_group)) {
-			pctx.blk = ext2fs_bg_itable_unused(fs, i);
+		    (gd->bg_itable_unused > gd->bg_free_inodes_count ||
+		     gd->bg_itable_unused > sb->s_inodes_per_group)) {
+			pctx.blk = gd->bg_itable_unused;
 			if (fix_problem(ctx, PR_0_GDT_ITABLE_UNUSED, &pctx)) {
-				ext2fs_bg_itable_unused_set(fs, i, 0);
+				gd->bg_itable_unused = 0;
 				should_be = 1;
 			}
 			ext2fs_unmark_valid(fs);
@@ -775,9 +687,6 @@ void check_super_block(e2fsck_t ctx)
 
 		if (should_be)
 			ext2fs_group_desc_csum_set(fs, i);
-		/* If the user aborts e2fsck by typing ^C, stop right away */
-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
-			return;
 	}
 
 	/*
@@ -787,18 +696,18 @@ void check_super_block(e2fsck_t ctx)
 	 * inodes; if the filesystem is not unmounted cleanly, the
 	 * global counts may not be accurate.
 	 */
-	if ((free_blocks != ext2fs_free_blocks_count(sb)) ||
+	if ((free_blocks != sb->s_free_blocks_count) ||
 	    (free_inodes != sb->s_free_inodes_count)) {
 		if (ctx->options & E2F_OPT_READONLY)
 			ext2fs_unmark_valid(fs);
 		else {
-			ext2fs_free_blocks_count_set(sb, free_blocks);
+			sb->s_free_blocks_count = free_blocks;
 			sb->s_free_inodes_count = free_inodes;
 			ext2fs_mark_super_dirty(fs);
 		}
 	}
 
-	if ((ext2fs_free_blocks_count(sb) > ext2fs_blocks_count(sb)) ||
+	if ((sb->s_free_blocks_count > sb->s_blocks_count) ||
 	    (sb->s_free_inodes_count > sb->s_inodes_count))
 		ext2fs_unmark_valid(fs);
 
@@ -886,31 +795,25 @@ void check_super_block(e2fsck_t ctx)
 	}
 
 	/*
-	 * Unfortunately, due to Windows' unfortunate design decision
-	 * to configure the hardware clock to tick localtime, instead
-	 * of the more proper and less error-prone UTC time, many
-	 * users end up in the situation where the system clock is
-	 * incorrectly set at the time when e2fsck is run.
-	 *
-	 * Historically this was usually due to some distributions
-	 * having buggy init scripts and/or installers that didn't
-	 * correctly detect this case and take appropriate
-	 * countermeasures.  However, it's still possible, despite the
-	 * best efforts of init script and installer authors to not be
-	 * able to detect this misconfiguration, usually due to a
-	 * buggy or misconfigured virtualization manager or the
-	 * installer not having access to a network time server during
-	 * the installation process.  So by default, we allow the
-	 * superblock times to be fudged by up to 24 hours.  This can
-	 * be disabled by setting options.accept_time_fudge to the
-	 * boolean value of false in e2fsck.conf.  We also support
-	 * options.buggy_init_scripts for backwards compatibility.
+	 * Some buggy distributions (such as Ubuntu) have init scripts
+	 * and/or installers which fail to correctly set the system
+	 * clock before running e2fsck and/or formatting the
+	 * filesystem initially.  Normally this happens because the
+	 * hardware clock is ticking localtime, instead of the more
+	 * proper and less error-prone UTC time.  So while the kernel
+	 * is booting, the system time (which in Linux systems always
+	 * ticks in UTC time) is set from the hardware clock, but
+	 * since the hardware clock is ticking localtime, the system
+	 * time is incorrect.  Unfortunately, some buggy distributions
+	 * do not correct this before running e2fsck.  If this option
+	 * is set to a boolean value of true, we attempt to work
+	 * around this situation by allowing the superblock last write
+	 * time, last mount time, and last check time to be in the
+	 * future by up to 24 hours.
 	 */
-	profile_get_boolean(ctx->profile, "options", "accept_time_fudge",
-			    0, 1, &accept_time_fudge);
 	profile_get_boolean(ctx->profile, "options", "buggy_init_scripts",
-			    0, accept_time_fudge, &accept_time_fudge);
-	ctx->time_fudge = accept_time_fudge ? 86400 : 0;
+			    0, 0, &buggy_init_scripts);
+	ctx->time_fudge = buggy_init_scripts ? 86400 : 0;
 
 	/*
 	 * Check to see if the superblock last mount time or last
@@ -930,7 +833,7 @@ void check_super_block(e2fsck_t ctx)
 		pctx.num = fs->super->s_wtime;
 		problem = PR_0_FUTURE_SB_LAST_WRITE;
 		if (fs->super->s_wtime <= (__u32) ctx->now + ctx->time_fudge)
-			problem = PR_0_FUTURE_SB_LAST_WRITE_FUDGED;
+			problem = PR_0_FUTURE_SB_LAST_MOUNT_FUDGED;
 		if (fix_problem(ctx, problem, &pctx)) {
 			fs->super->s_wtime = ctx->now;
 			ext2fs_mark_super_dirty(fs);

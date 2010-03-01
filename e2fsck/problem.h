@@ -227,12 +227,6 @@ struct problem_context {
 /* Block group checksum (latch question) */
 #define PR_0_GDT_CSUM_LATCH			0x00003E
 
-/* Exclude_inode not enabled, but exclude inode is non-zero */
-#define PR_0_CLEAR_EXCLUDE_INODE			0x010100
-
-/* Exclude inode invalid */
-#define PR_0_EXCLUDE_INODE_INVALID		0x010101
-
 
 /*
  * Pass 1 errors
@@ -522,9 +516,6 @@ struct problem_context {
 
 /* Extent node header invalid */
 #define PR_1_EXTENT_HEADER_INVALID	0x01005F
-
-/* Exclude inode failed */
-#define PR_1_EXCLUDE_INODE_CREATE	0x010100
 
 /*
  * Pass 1b errors

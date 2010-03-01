@@ -72,20 +72,37 @@ CC="diet cc -nostdinc"
 WITH_DIET_LIBC=yes
 AC_MSG_RESULT(CC=$CC))dnl
 dnl
+dnl set $(CC) from --with-cc=value
+dnl
 AC_ARG_WITH([cc],
-AC_HELP_STRING([--with-cc],[no longer supported, use CC= instead]),
-AC_MSG_ERROR([--with-cc no longer supported; use CC= instead]))
-dnl
-AC_ARG_WITH([ccopts],
-AC_HELP_STRING([--with-ccopts],[no longer supported, use CFLAGS= instead]),
-AC_MSG_ERROR([--with-ccopts no longer supported; use CFLAGS= instead]))
-dnl
-AC_ARG_WITH([ldopts],
-AC_HELP_STRING([--with-ldopts],[no longer supported, use LDFLAGS= instead]),
-AC_MSG_ERROR([--with-ldopts no longer supported; use LDFLAGS= instead]))
-dnl
+[  --with-cc=COMPILER      select compiler to use],
+AC_MSG_RESULT(CC=$withval)
+CC=$withval,
+if test -z "$CC" ; then CC=cc; fi
+[AC_MSG_RESULT(CC defaults to $CC)])dnl
+export CC
+AC_SUBST([CC])
 AC_PROG_CC
 AC_PROG_CPP
+dnl
+dnl set $(LD) from --with-linker=value
+dnl
+AC_ARG_WITH([linker],
+[  --with-linker=LINKER    select linker to use],
+AC_MSG_RESULT(LD=$withval)
+LD=$withval,
+if test -z "$LD" ; then LD=$CC; fi
+[AC_MSG_RESULT(LD defaults to $LD)])dnl
+export LD
+AC_SUBST([LD])
+dnl
+dnl set $(CCOPTS) from --with-ccopts=value
+dnl
+AC_ARG_WITH([ccopts],
+[  --with-ccopts=CCOPTS    select compiler command line options],
+AC_MSG_RESULT(CCOPTS is $withval)
+CFLAGS=$withval,
+)dnl
 dnl
 dnl On systems without linux header files, we add an extra include directory
 dnl that holds enough to fake it (hopefully).  Note that the $(top_srcdir) here
@@ -120,6 +137,15 @@ dnl
 LIB_EXT=.a
 STATIC_LIB_EXT=.a
 PROFILED_LIB_EXT=.a
+dnl
+dnl set $(LDFLAGS) from --with-ldopts=value
+dnl
+AC_ARG_WITH([ldopts],
+[  --with-ldopts=LDOPTS    select linker command line options],
+AC_MSG_RESULT(LDFLAGS is $withval)
+LDFLAGS=$withval,
+)dnl
+AC_SUBST(LDFLAGS)
 dnl
 dnl Allow separate `root_prefix' to be specified
 dnl
@@ -802,14 +828,7 @@ AC_CHECK_MEMBER(struct sockaddr.sa_len,
 	[#include <sys/types.h>
 	 #include <sys/socket.h>])
 dnl
-dnl This will add -lblkid to the AC_CHECK_FUNCS search if we are using
-dnl the system-provided blkid library
-dnl
-if test -n "$BLKID_CMT"; then
-  AC_SEARCH_LIBS([blkid_probe_all], [blkid])
-fi
-dnl
-AC_CHECK_FUNCS(chflags getrusage llseek lseek64 open64 fstat64 ftruncate64 getmntinfo strtoull strcasecmp srandom jrand48 fchown mallinfo fdatasync strnlen strptime strdup sysconf pathconf posix_memalign memalign valloc __secure_getenv prctl mmap utime setresuid setresgid usleep nanosleep getdtablesize getrlimit sync_file_range posix_fadvise fallocate blkid_probe_get_topology)
+AC_CHECK_FUNCS(chflags getrusage llseek lseek64 open64 fstat64 ftruncate64 getmntinfo strtoull strcasecmp srandom jrand48 fchown mallinfo fdatasync strnlen strptime strdup sysconf pathconf posix_memalign memalign valloc __secure_getenv prctl mmap utime setresuid setresgid usleep nanosleep getdtablesize getrlimit)
 dnl
 dnl Check to see if -lsocket is required (solaris) to make something
 dnl that uses socket() to compile; this is needed for the UUID library

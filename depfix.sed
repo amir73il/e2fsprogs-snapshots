@@ -25,8 +25,6 @@ s/  */ /g
 s;/usr/include/[^ ]* *;;g
 s;/usr/lib/[^ ]* *;;g
 s;/mit/cygnus[^ ]* *;;g
-s;../[^ ]*lib/blkid/blkid[^ ]* *;;g
-s;../[^ ]*lib/uuid/uuid.h[^ ]* *;;g
 
 #
 # Now insert a trailing newline...

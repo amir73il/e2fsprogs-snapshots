@@ -7,7 +7,8 @@ INSTALL = @INSTALL@
 
 @MCONFIG@
 
-@DEBUGFS_CMT@DEBUGFS_LIB_OBJS = bb_compat.o inode_io.o namei.o write_bb_file.o
+@DEBUGFS_CMT@DEBUGFS_LIB_OBJS = bb_compat.o fileio.o \
+@DEBUGFS_CMT@	inode_io.o namei.o write_bb_file.o 
 
 MK_CMDS=	_SS_DIR_OVERRIDE=../ss ../ss/mk_cmds
 
@@ -26,8 +27,6 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
 	bb_inode.o \
 	bitmaps.o \
 	bitops.o \
-	blkmap64_ba.o \
-	blknum.o \
 	block.o \
 	bmap.o \
 	check_desc.o \
@@ -42,12 +41,10 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
 	expanddir.o \
 	ext_attr.o \
 	extent.o \
-	fileio.o \
 	finddev.o \
 	flushb.o \
 	freefs.o \
 	gen_bitmap.o \
-	gen_bitmap64.o \
 	get_pathname.o \
 	getsize.o \
 	getsectsize.o \
@@ -67,7 +64,6 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
 	native.o \
 	newdir.o \
 	openfs.o \
-	progress.o \
 	read_bb.o \
 	read_bb_file.o \
 	res_gdt.o \
@@ -90,7 +86,6 @@ SRCS= ext2_err.c \
 	$(srcdir)/bb_inode.c \
 	$(srcdir)/bitmaps.c \
 	$(srcdir)/bitops.c \
-	$(srcdir)/blkmap64_ba.o \
 	$(srcdir)/block.c \
 	$(srcdir)/bmap.c \
 	$(srcdir)/check_desc.c \
@@ -111,7 +106,6 @@ SRCS= ext2_err.c \
 	$(srcdir)/flushb.c \
 	$(srcdir)/freefs.c \
 	$(srcdir)/gen_bitmap.c \
-	$(srcdir)/gen_bitmap64.c \
 	$(srcdir)/get_pathname.c \
 	$(srcdir)/getsize.c \
 	$(srcdir)/getsectsize.c \
@@ -225,8 +219,7 @@ tst_getsize: tst_getsize.o $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
 
 tst_ismounted: $(srcdir)/ismounted.c $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)
 	$(E) "	LD $@"
-	$(Q) $(CC) -o tst_ismounted $(srcdir)/ismounted.c \
-		$(STATIC_LIBEXT2FS) -DDEBUG $(ALL_CFLAGS) \
+	$(Q) $(CC) -o tst_ismounted $(srcdir)/ismounted.c -DDEBUG $(ALL_CFLAGS) \
 		$(LIBCOM_ERR) 
 
 tst_byteswap: tst_byteswap.o $(STATIC_LIBEXT2FS) $(DEPLIBCOM_ERR)

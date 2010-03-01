@@ -61,7 +61,7 @@ static int expand_dir_proc(ext2_filsys	fs,
 			return BLOCK_ABORT;
 		}
 		memset(block, 0, fs->blocksize);
-		retval = io_channel_write_blk64(fs->io, new_blk, 1, block);
+		retval = io_channel_write_blk(fs->io, new_blk, 1, block);
 	}
 	if (retval) {
 		es->err = retval;
@@ -69,7 +69,7 @@ static int expand_dir_proc(ext2_filsys	fs,
 	}
 	ext2fs_free_mem(&block);
 	*blocknr = new_blk;
-	ext2fs_block_alloc_stats2(fs, new_blk, +1);
+	ext2fs_block_alloc_stats(fs, new_blk, +1);
 	es->newblocks++;
 
 	if (es->done)

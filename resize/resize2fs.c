@@ -48,18 +48,21 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
 static errcode_t inode_ref_fix(ext2_resize_t rfs);
 static errcode_t move_itables(ext2_resize_t rfs);
 static errcode_t fix_resize_inode(ext2_filsys fs);
-static errcode_t fix_exclude_inode(ext2_filsys fs);
 static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
 static errcode_t fix_sb_journal_backup(ext2_filsys fs);
 
 /*
  * Some helper CPP macros
  */
-#define IS_BLOCK_BM(fs, i, blk) ((blk) == ext2fs_block_bitmap_loc((fs),(i)))
-#define IS_INODE_BM(fs, i, blk) ((blk) == ext2fs_inode_bitmap_loc((fs),(i)))
+#define FS_BLOCK_BM(fs, i) ((fs)->group_desc[(i)].bg_block_bitmap)
+#define FS_INODE_BM(fs, i) ((fs)->group_desc[(i)].bg_inode_bitmap)
+#define FS_INODE_TB(fs, i) ((fs)->group_desc[(i)].bg_inode_table)
 
-#define IS_INODE_TB(fs, i, blk) (((blk) >= ext2fs_inode_table_loc((fs), (i))) && \
-				 ((blk) < (ext2fs_inode_table_loc((fs), (i)) + \
+#define IS_BLOCK_BM(fs, i, blk) ((blk) == FS_BLOCK_BM((fs),(i)))
+#define IS_INODE_BM(fs, i, blk) ((blk) == FS_INODE_BM((fs),(i)))
+
+#define IS_INODE_TB(fs, i, blk) (((blk) >= FS_INODE_TB((fs), (i))) && \
+				 ((blk) < (FS_INODE_TB((fs), (i)) + \
 					   (fs)->inode_blocks_per_group)))
 
 #define META_OVERHEAD(fs) (2 + (fs)->inode_blocks_per_group)
@@ -70,7 +73,7 @@ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
  * This is the top-level routine which does the dirty deed....
  */
 errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
-	    errcode_t (*progress)(ext2_resize_t rfs, int pass,
+		    errcode_t (*progress)(ext2_resize_t rfs, int pass,
 					  unsigned long cur,
 					  unsigned long max_val))
 {
@@ -109,10 +112,10 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
 
 	fix_uninit_block_bitmaps(rfs->new_fs);
 	/* Clear the block bitmap uninit flag for the last block group */
-	ext2fs_bg_flags_clear(rfs->new_fs, rfs->new_fs->group_desc_count - 1,
-			     EXT2_BG_BLOCK_UNINIT);
+	rfs->new_fs->group_desc[rfs->new_fs->group_desc_count-1].bg_flags &=
+		~EXT2_BG_BLOCK_UNINIT;
 
-	*new_size = ext2fs_blocks_count(rfs->new_fs->super);
+	*new_size = rfs->new_fs->super->s_blocks_count;
 
 	retval = blocks_to_move(rfs);
 	if (retval)
@@ -120,9 +123,9 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
 
 #ifdef RESIZE2FS_DEBUG
 	if (rfs->flags & RESIZE_DEBUG_BMOVE)
-		printf("Number of free blocks: %llu/%llu, Needed: %d\n",
-		       ext2fs_free_blocks_count(rfs->old_fs->super),
-		       ext2fs_free_blocks_count(rfs->new_fs->super),
+		printf("Number of free blocks: %u/%u, Needed: %d\n",
+		       rfs->old_fs->super->s_free_blocks_count,
+		       rfs->new_fs->super->s_free_blocks_count,
 		       rfs->needed_blocks);
 #endif
 
@@ -147,10 +150,6 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
 		goto errout;
 
 	retval = fix_resize_inode(rfs->new_fs);
-	if (retval)
-		goto errout;
-
-	retval = fix_exclude_inode(rfs->new_fs);
 	if (retval)
 		goto errout;
 
@@ -200,7 +199,7 @@ static void fix_uninit_block_bitmaps(ext2_filsys fs)
 		return;
 
 	for (g=0; g < fs->group_desc_count; g++) {
-		if (!(ext2fs_bg_flags_test(fs, g, EXT2_BG_BLOCK_UNINIT)))
+		if (!(fs->group_desc[g].bg_flags & EXT2_BG_BLOCK_UNINIT))
 			continue;
 
 		blk = (g * fs->super->s_blocks_per_group) +
@@ -216,21 +215,21 @@ static void fix_uninit_block_bitmaps(ext2_filsys fs)
 				fs->super->s_reserved_gdt_blocks;
 
 		for (i=0; i < fs->super->s_blocks_per_group; i++, blk++) {
-			if (blk >= ext2fs_blocks_count(fs->super))
+			if (blk >= fs->super->s_blocks_count)
 				break;
 			if ((blk == super_blk) ||
 			    (old_desc_blk && old_desc_blocks &&
 			     (blk >= old_desc_blk) &&
 			     (blk < old_desc_blk + old_desc_blocks)) ||
 			    (new_desc_blk && (blk == new_desc_blk)) ||
-			    (blk == ext2fs_block_bitmap_loc(fs, g)) ||
-			    (blk == ext2fs_inode_bitmap_loc(fs, g)) ||
-			    (blk >= ext2fs_inode_table_loc(fs, g) &&
-			     (blk < ext2fs_inode_table_loc(fs, g)
+			    (blk == fs->group_desc[g].bg_block_bitmap) ||
+			    (blk == fs->group_desc[g].bg_inode_bitmap) ||
+			    (blk >= fs->group_desc[g].bg_inode_table &&
+			     (blk < fs->group_desc[g].bg_inode_table
 			      + fs->inode_blocks_per_group)))
-				ext2fs_fast_mark_block_bitmap2(fs->block_map, blk);
+				ext2fs_fast_mark_block_bitmap(fs->block_map, blk);
 			else
-				ext2fs_fast_unmark_block_bitmap2(fs->block_map, blk);
+				ext2fs_fast_unmark_block_bitmap(fs->block_map, blk);
 		}
 	}
 }
@@ -259,29 +258,29 @@ static void free_gdp_blocks(ext2_filsys fs,
 	int	j;
 
 	if (gdp->bg_block_bitmap &&
-	    (gdp->bg_block_bitmap < ext2fs_blocks_count(fs->super))) {
+	    (gdp->bg_block_bitmap < fs->super->s_blocks_count)) {
 		ext2fs_block_alloc_stats(fs, gdp->bg_block_bitmap, -1);
-		ext2fs_mark_block_bitmap2(reserve_blocks,
+		ext2fs_mark_block_bitmap(reserve_blocks,
 					 gdp->bg_block_bitmap);
 	}
 
 	if (gdp->bg_inode_bitmap &&
-	    (gdp->bg_inode_bitmap < ext2fs_blocks_count(fs->super))) {
+	    (gdp->bg_inode_bitmap < fs->super->s_blocks_count)) {
 		ext2fs_block_alloc_stats(fs, gdp->bg_inode_bitmap, -1);
-		ext2fs_mark_block_bitmap2(reserve_blocks,
+		ext2fs_mark_block_bitmap(reserve_blocks,
 					 gdp->bg_inode_bitmap);
 	}
 
 	if (gdp->bg_inode_table == 0 ||
-	    (gdp->bg_inode_table >= ext2fs_blocks_count(fs->super)))
+	    (gdp->bg_inode_table >= fs->super->s_blocks_count))
 		return;
 
 	for (blk = gdp->bg_inode_table, j = 0;
 	     j < fs->inode_blocks_per_group; j++, blk++) {
-		if (blk >= ext2fs_blocks_count(fs->super))
+		if (blk >= fs->super->s_blocks_count)
 			break;
 		ext2fs_block_alloc_stats(fs, blk, -1);
-		ext2fs_mark_block_bitmap2(reserve_blocks, blk);
+		ext2fs_mark_block_bitmap(reserve_blocks, blk);
 	}
 }
 
@@ -307,10 +306,10 @@ errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys old_fs,
 	unsigned long long new_inodes;	/* u64 to check for overflow */
 	double		percent;
 
-	ext2fs_blocks_count_set(fs->super, new_size);
+	fs->super->s_blocks_count = new_size;
 
 retry:
-	fs->group_desc_count = ext2fs_div64_ceil(ext2fs_blocks_count(fs->super) -
+	fs->group_desc_count = ext2fs_div_ceil(fs->super->s_blocks_count -
 				       fs->super->s_first_data_block,
 				       EXT2_BLOCKS_PER_GROUP(fs->super));
 	if (fs->group_desc_count == 0)
@@ -335,13 +334,12 @@ retry:
 	 * necessary data structures.  If not, we need to get rid of
 	 * it.
 	 */
-	rem = (ext2fs_blocks_count(fs->super) - fs->super->s_first_data_block) %
+	rem = (fs->super->s_blocks_count - fs->super->s_first_data_block) %
 		fs->super->s_blocks_per_group;
 	if ((fs->group_desc_count == 1) && rem && (rem < overhead))
 		return EXT2_ET_TOOSMALL;
 	if (rem && (rem < overhead+50)) {
-		ext2fs_blocks_count_set(fs->super,
-					ext2fs_blocks_count(fs->super) - rem);
+		fs->super->s_blocks_count -= rem;
 		goto retry;
 	}
 	/*
@@ -359,29 +357,26 @@ retry:
 	/*
 	 * Adjust the number of free blocks
 	 */
-	blk = ext2fs_blocks_count(old_fs->super);
-	if (blk > ext2fs_blocks_count(fs->super))
-		ext2fs_free_blocks_count_set(fs->super, 
-			ext2fs_free_blocks_count(fs->super) -
-			(blk - ext2fs_blocks_count(fs->super)));
+	blk = old_fs->super->s_blocks_count;
+	if (blk > fs->super->s_blocks_count)
+		fs->super->s_free_blocks_count -=
+			(blk - fs->super->s_blocks_count);
 	else
-		ext2fs_free_blocks_count_set(fs->super, 
-			ext2fs_free_blocks_count(fs->super) +
-			(ext2fs_blocks_count(fs->super) - blk));
+		fs->super->s_free_blocks_count +=
+			(fs->super->s_blocks_count - blk);
 
 	/*
 	 * Adjust the number of reserved blocks
 	 */
-	percent = (ext2fs_r_blocks_count(old_fs->super) * 100.0) /
-		ext2fs_blocks_count(old_fs->super);
-	ext2fs_r_blocks_count_set(fs->super,
-				  (percent * ext2fs_blocks_count(fs->super) /
-				   100.0));
+	percent = (old_fs->super->s_r_blocks_count * 100.0) /
+		old_fs->super->s_blocks_count;
+	fs->super->s_r_blocks_count = (unsigned int) (percent *
+					fs->super->s_blocks_count / 100.0);
 
 	/*
 	 * Adjust the bitmaps for size
 	 */
-	retval = ext2fs_resize_inode_bitmap2(fs->super->s_inodes_count,
+	retval = ext2fs_resize_inode_bitmap(fs->super->s_inodes_count,
 					    fs->super->s_inodes_count,
 					    fs->inode_map);
 	if (retval) goto errout;
@@ -389,7 +384,7 @@ retry:
 	real_end = ((EXT2_BLOCKS_PER_GROUP(fs->super)
 		     * fs->group_desc_count)) - 1 +
 			     fs->super->s_first_data_block;
-	retval = ext2fs_resize_block_bitmap2(ext2fs_blocks_count(fs->super)-1,
+	retval = ext2fs_resize_block_bitmap(fs->super->s_blocks_count-1,
 					    real_end, fs->block_map);
 
 	if (retval) goto errout;
@@ -443,8 +438,7 @@ retry:
 		for (i = fs->group_desc_count;
 		     i < old_fs->group_desc_count; i++) {
 			free_gdp_blocks(fs, reserve_blocks,
-					ext2fs_group_desc(old_fs,
-						old_fs->group_desc, i));
+					&old_fs->group_desc[i]);
 		}
 		retval = 0;
 		goto errout;
@@ -453,13 +447,13 @@ retry:
 	/*
 	 * Fix the count of the last (old) block group
 	 */
-	old_numblocks = (ext2fs_blocks_count(old_fs->super) -
+	old_numblocks = (old_fs->super->s_blocks_count -
 			 old_fs->super->s_first_data_block) %
 				 old_fs->super->s_blocks_per_group;
 	if (!old_numblocks)
 		old_numblocks = old_fs->super->s_blocks_per_group;
 	if (old_fs->group_desc_count == fs->group_desc_count) {
-		numblocks = (ext2fs_blocks_count(fs->super) -
+		numblocks = (fs->super->s_blocks_count -
 			     fs->super->s_first_data_block) %
 			fs->super->s_blocks_per_group;
 		if (!numblocks)
@@ -467,7 +461,7 @@ retry:
 	} else
 		numblocks = fs->super->s_blocks_per_group;
 	i = old_fs->group_desc_count - 1;
-	ext2fs_bg_free_blocks_count_set(fs, i, ext2fs_bg_free_blocks_count(fs, i) + (numblocks - old_numblocks));
+	fs->group_desc[i].bg_free_blocks_count += (numblocks-old_numblocks);
 	ext2fs_group_desc_csum_set(fs, i);
 
 	/*
@@ -497,15 +491,16 @@ retry:
 			fs->super->s_reserved_gdt_blocks;
 	for (i = old_fs->group_desc_count;
 	     i < fs->group_desc_count; i++) {
-		memset(ext2fs_group_desc(fs, fs->group_desc, i), 0,
+		memset(&fs->group_desc[i], 0,
 		       sizeof(struct ext2_group_desc));
 		adjblocks = 0;
 
-		ext2fs_bg_flags_zap(fs, i);
+		fs->group_desc[i].bg_flags = 0;
 		if (csum_flag)
-			ext2fs_bg_flags_set(fs, i, EXT2_BG_INODE_UNINIT | EXT2_BG_INODE_ZEROED);
+			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_UNINIT |
+				EXT2_BG_INODE_ZEROED;
 		if (i == fs->group_desc_count-1) {
-			numblocks = (ext2fs_blocks_count(fs->super) -
+			numblocks = (fs->super->s_blocks_count -
 				     fs->super->s_first_data_block) %
 					     fs->super->s_blocks_per_group;
 			if (!numblocks)
@@ -513,13 +508,13 @@ retry:
 		} else {
 			numblocks = fs->super->s_blocks_per_group;
 			if (csum_flag)
-				ext2fs_bg_flags_set(fs, i,
-						    EXT2_BG_BLOCK_UNINIT);
+				fs->group_desc[i].bg_flags |=
+					EXT2_BG_BLOCK_UNINIT;
 		}
 
 		has_super = ext2fs_bg_has_super(fs, i);
 		if (has_super) {
-			ext2fs_block_alloc_stats2(fs, group_block, +1);
+			ext2fs_block_alloc_stats(fs, group_block, +1);
 			adjblocks++;
 		}
 		meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
@@ -529,7 +524,7 @@ retry:
 		    (meta_bg < fs->super->s_first_meta_bg)) {
 			if (has_super) {
 				for (j=0; j < old_desc_blocks; j++)
-					ext2fs_block_alloc_stats2(fs,
+					ext2fs_block_alloc_stats(fs,
 						 group_block + 1 + j, +1);
 				adjblocks += old_desc_blocks;
 			}
@@ -539,21 +534,20 @@ retry:
 			if (((i % meta_bg_size) == 0) ||
 			    ((i % meta_bg_size) == 1) ||
 			    ((i % meta_bg_size) == (meta_bg_size-1)))
-				ext2fs_block_alloc_stats2(fs,
+				ext2fs_block_alloc_stats(fs,
 						 group_block + has_super, +1);
 		}
 
 		adjblocks += 2 + fs->inode_blocks_per_group;
 
 		numblocks -= adjblocks;
-		ext2fs_free_blocks_count_set(fs->super,
-			     ext2fs_free_blocks_count(fs->super) - adjblocks);
+		fs->super->s_free_blocks_count -= adjblocks;
 		fs->super->s_free_inodes_count +=
 			fs->super->s_inodes_per_group;
-		ext2fs_bg_free_blocks_count_set(fs, i, numblocks);
-		ext2fs_bg_free_inodes_count_set(fs, i,
-						fs->super->s_inodes_per_group);
-		ext2fs_bg_used_dirs_count_set(fs, i, 0);
+		fs->group_desc[i].bg_free_blocks_count = numblocks;
+		fs->group_desc[i].bg_free_inodes_count =
+			fs->super->s_inodes_per_group;
+		fs->group_desc[i].bg_used_dirs_count = 0;
 		ext2fs_group_desc_csum_set(fs, i);
 
 		retval = ext2fs_allocate_group_table(fs, i, 0);
@@ -648,10 +642,10 @@ static errcode_t adjust_superblock(ext2_resize_t rfs, blk_t new_size)
 		/*
 		 * Write out the new inode table
 		 */
-		retval = io_channel_write_blk64(fs->io,
-						ext2fs_inode_table_loc(fs, i),
-						fs->inode_blocks_per_group,
-						rfs->itable_buf);
+		retval = io_channel_write_blk(fs->io,
+					      fs->group_desc[i].bg_inode_table,
+					      fs->inode_blocks_per_group,
+					      rfs->itable_buf);
 		if (retval) goto errout;
 
 		io_channel_flush(fs->io);
@@ -707,22 +701,22 @@ static errcode_t mark_table_blocks(ext2_filsys fs,
 		/*
 		 * Mark the blocks used for the inode table
 		 */
-		for (j = 0, b = ext2fs_inode_table_loc(fs, i);
+		for (j = 0, b = fs->group_desc[i].bg_inode_table;
 		     j < (unsigned int) fs->inode_blocks_per_group;
 		     j++, b++)
-			ext2fs_mark_block_bitmap2(bmap, b);
+			ext2fs_mark_block_bitmap(bmap, b);
 
 		/*
 		 * Mark block used for the block bitmap
 		 */
-		ext2fs_mark_block_bitmap2(bmap,
-					 ext2fs_block_bitmap_loc(fs, i));
+		ext2fs_mark_block_bitmap(bmap,
+					 fs->group_desc[i].bg_block_bitmap);
 
 		/*
 		 * Mark block used for the inode bitmap
 		 */
-		ext2fs_mark_block_bitmap2(bmap,
-					 ext2fs_inode_bitmap_loc(fs, i));
+		ext2fs_mark_block_bitmap(bmap,
+					 fs->group_desc[i].bg_inode_bitmap);
 	}
 	return 0;
 }
@@ -738,8 +732,8 @@ static void mark_fs_metablock(ext2_resize_t rfs,
 {
 	ext2_filsys 	fs = rfs->new_fs;
 
-	ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
-	ext2fs_block_alloc_stats2(fs, blk, +1);
+	ext2fs_mark_block_bitmap(rfs->reserve_blocks, blk);
+	ext2fs_block_alloc_stats(fs, blk, +1);
 
 	/*
 	 * Check to see if we overlap with the inode or block bitmap,
@@ -747,25 +741,25 @@ static void mark_fs_metablock(ext2_resize_t rfs,
 	 * mark it as a block to be moved.
 	 */
 	if (IS_BLOCK_BM(fs, group, blk)) {
-		ext2fs_block_bitmap_loc_set(fs, group, 0);
+		FS_BLOCK_BM(fs, group) = 0;
 		rfs->needed_blocks++;
 	} else if (IS_INODE_BM(fs, group, blk)) {
-		ext2fs_inode_bitmap_loc_set(fs, group, 0);
+		FS_INODE_BM(fs, group) = 0;
 		rfs->needed_blocks++;
 	} else if (IS_INODE_TB(fs, group, blk)) {
-		ext2fs_inode_table_loc_set(fs, group, 0);
+		FS_INODE_TB(fs, group) = 0;
 		rfs->needed_blocks++;
 	} else if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-		   (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT))) {
+		   (fs->group_desc[group].bg_flags & EXT2_BG_BLOCK_UNINIT)) {
 		/*
 		 * If the block bitmap is uninitialized, which means
 		 * nothing other than standard metadata in use.
 		 */
 		return;
-	} else if (ext2fs_test_block_bitmap2(rfs->old_fs->block_map, blk) &&
-		   !ext2fs_test_block_bitmap2(meta_bmap, blk)) {
-		ext2fs_mark_block_bitmap2(rfs->move_blocks, blk);
+	} else if (ext2fs_test_block_bitmap(rfs->old_fs->block_map, blk) &&
+		   !ext2fs_test_block_bitmap(meta_bmap, blk)) {
+		ext2fs_mark_block_bitmap(rfs->move_blocks, blk);
 		rfs->needed_blocks++;
 	}
 }
@@ -790,7 +784,7 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 
 	fs = rfs->new_fs;
 	old_fs = rfs->old_fs;
-	if (ext2fs_blocks_count(old_fs->super) > ext2fs_blocks_count(fs->super))
+	if (old_fs->super->s_blocks_count > fs->super->s_blocks_count)
 		fs = rfs->old_fs;
 
 	retval = ext2fs_allocate_block_bitmap(fs, _("blocks to be moved"),
@@ -813,12 +807,12 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 	 * If we're shrinking the filesystem, we need to move all of
 	 * the blocks that don't fit any more
 	 */
-	for (blk = ext2fs_blocks_count(fs->super);
-	     blk < ext2fs_blocks_count(old_fs->super); blk++) {
-		g = ext2fs_group_of_blk2(fs, blk);
+	for (blk = fs->super->s_blocks_count;
+	     blk < old_fs->super->s_blocks_count; blk++) {
+		g = ext2fs_group_of_blk(fs, blk);
 		if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
-		    ext2fs_bg_flags_test(old_fs, g, EXT2_BG_BLOCK_UNINIT)) {
+		    (old_fs->group_desc[g].bg_flags & EXT2_BG_BLOCK_UNINIT)) {
 			/*
 			 * The block bitmap is uninitialized, so skip
 			 * to the next block group.
@@ -827,12 +821,12 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 				fs->super->s_first_data_block - 1;
 			continue;
 		}
-		if (ext2fs_test_block_bitmap2(old_fs->block_map, blk) &&
-		    !ext2fs_test_block_bitmap2(meta_bmap, blk)) {
-			ext2fs_mark_block_bitmap2(rfs->move_blocks, blk);
+		if (ext2fs_test_block_bitmap(old_fs->block_map, blk) &&
+		    !ext2fs_test_block_bitmap(meta_bmap, blk)) {
+			ext2fs_mark_block_bitmap(rfs->move_blocks, blk);
 			rfs->needed_blocks++;
 		}
-		ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
+		ext2fs_mark_block_bitmap(rfs->reserve_blocks, blk);
 	}
 
 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) {
@@ -865,7 +859,7 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 			}
 			for (blk = group_blk+1+new_blocks;
 			     blk < group_blk+1+old_blocks; blk++) {
-				ext2fs_block_alloc_stats2(fs, blk, -1);
+				ext2fs_block_alloc_stats(fs, blk, -1);
 				rfs->needed_blocks--;
 			}
 			group_blk += fs->super->s_blocks_per_group;
@@ -903,25 +897,25 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 						  group_blk + has_super);
 		}
 
-		if (ext2fs_inode_table_loc(fs, i) &&
-		    ext2fs_inode_bitmap_loc(fs, i) &&
-		    ext2fs_block_bitmap_loc(fs, i))
+		if (fs->group_desc[i].bg_inode_table &&
+		    fs->group_desc[i].bg_inode_bitmap &&
+		    fs->group_desc[i].bg_block_bitmap)
 			goto next_group;
 
 		/*
 		 * Reserve the existing meta blocks that we know
 		 * aren't to be moved.
 		 */
-		if (ext2fs_block_bitmap_loc(fs, i))
-			ext2fs_mark_block_bitmap2(rfs->reserve_blocks,
-				 ext2fs_block_bitmap_loc(fs, i));
-		if (ext2fs_inode_bitmap_loc(fs, i))
-			ext2fs_mark_block_bitmap2(rfs->reserve_blocks,
-				 ext2fs_inode_bitmap_loc(fs, i));
-		if (ext2fs_inode_table_loc(fs, i))
-			for (blk = ext2fs_inode_table_loc(fs, i), j=0;
+		if (fs->group_desc[i].bg_block_bitmap)
+			ext2fs_mark_block_bitmap(rfs->reserve_blocks,
+				 fs->group_desc[i].bg_block_bitmap);
+		if (fs->group_desc[i].bg_inode_bitmap)
+			ext2fs_mark_block_bitmap(rfs->reserve_blocks,
+				 fs->group_desc[i].bg_inode_bitmap);
+		if (fs->group_desc[i].bg_inode_table)
+			for (blk = fs->group_desc[i].bg_inode_table, j=0;
 			     j < fs->inode_blocks_per_group ; j++, blk++)
-				ext2fs_mark_block_bitmap2(rfs->reserve_blocks,
+				ext2fs_mark_block_bitmap(rfs->reserve_blocks,
 							 blk);
 
 		/*
@@ -956,20 +950,20 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 		 * For those structures that have changed, we need to
 		 * do bookkeepping.
 		 */
-		if (ext2fs_block_bitmap_loc(old_fs, i) !=
-		    (blk = ext2fs_block_bitmap_loc(fs, i))) {
-			ext2fs_block_alloc_stats2(fs, blk, +1);
-			if (ext2fs_test_block_bitmap2(old_fs->block_map, blk) &&
-			    !ext2fs_test_block_bitmap2(meta_bmap, blk))
-				ext2fs_mark_block_bitmap2(rfs->move_blocks,
+		if (FS_BLOCK_BM(old_fs, i) !=
+		    (blk = FS_BLOCK_BM(fs, i))) {
+			ext2fs_block_alloc_stats(fs, blk, +1);
+			if (ext2fs_test_block_bitmap(old_fs->block_map, blk) &&
+			    !ext2fs_test_block_bitmap(meta_bmap, blk))
+				ext2fs_mark_block_bitmap(rfs->move_blocks,
 							 blk);
 		}
-		if (ext2fs_inode_bitmap_loc(old_fs, i) !=
-		    (blk = ext2fs_inode_bitmap_loc(fs, i))) {
-			ext2fs_block_alloc_stats2(fs, blk, +1);
-			if (ext2fs_test_block_bitmap2(old_fs->block_map, blk) &&
-			    !ext2fs_test_block_bitmap2(meta_bmap, blk))
-				ext2fs_mark_block_bitmap2(rfs->move_blocks,
+		if (FS_INODE_BM(old_fs, i) !=
+		    (blk = FS_INODE_BM(fs, i))) {
+			ext2fs_block_alloc_stats(fs, blk, +1);
+			if (ext2fs_test_block_bitmap(old_fs->block_map, blk) &&
+			    !ext2fs_test_block_bitmap(meta_bmap, blk))
+				ext2fs_mark_block_bitmap(rfs->move_blocks,
 							 blk);
 		}
 
@@ -980,7 +974,7 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 		 * can't have the inode table be destroyed during the
 		 * block relocation phase.
 		 */
-		if (ext2fs_inode_table_loc(fs, i) == ext2fs_inode_table_loc(old_fs, i))
+		if (FS_INODE_TB(fs, i) == FS_INODE_TB(old_fs, i))
 			goto next_group; /* inode table not moved */
 
 		rfs->needed_blocks += fs->inode_blocks_per_group;
@@ -990,12 +984,12 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 		 * allocation bitmap, and move any blocks that might
 		 * be necessary.
 		 */
-		for (blk = ext2fs_inode_table_loc(fs, i), j=0;
+		for (blk = fs->group_desc[i].bg_inode_table, j=0;
 		     j < fs->inode_blocks_per_group ; j++, blk++) {
-			ext2fs_block_alloc_stats2(fs, blk, +1);
-			if (ext2fs_test_block_bitmap2(old_fs->block_map, blk) &&
-			    !ext2fs_test_block_bitmap2(meta_bmap, blk))
-				ext2fs_mark_block_bitmap2(rfs->move_blocks,
+			ext2fs_block_alloc_stats(fs, blk, +1);
+			if (ext2fs_test_block_bitmap(old_fs->block_map, blk) &&
+			    !ext2fs_test_block_bitmap(meta_bmap, blk))
+				ext2fs_mark_block_bitmap(rfs->move_blocks,
 							 blk);
 		}
 
@@ -1003,9 +997,9 @@ static errcode_t blocks_to_move(ext2_resize_t rfs)
 		 * Make sure the old inode table is reserved in the
 		 * block reservation bitmap.
 		 */
-		for (blk = ext2fs_inode_table_loc(rfs->old_fs, i), j=0;
+		for (blk = rfs->old_fs->group_desc[i].bg_inode_table, j=0;
 		     j < fs->inode_blocks_per_group ; j++, blk++)
-			ext2fs_mark_block_bitmap2(rfs->reserve_blocks, blk);
+			ext2fs_mark_block_bitmap(rfs->reserve_blocks, blk);
 
 	next_group:
 		group_blk += rfs->new_fs->super->s_blocks_per_group;
@@ -1042,9 +1036,9 @@ static void init_block_alloc(ext2_resize_t rfs)
 	rfs->new_blk = rfs->new_fs->super->s_first_data_block;
 #if 0
 	/* HACK for testing */
-	if (ext2fs_blocks_count(rfs->new_fs->super) >
-	    ext2fs_blocks_count(rfs->old_fs->super))
-		rfs->new_blk = ext2fs_blocks_count(rfs->old_fs->super);
+	if (rfs->new_fs->super->s_blocks_count >
+	    rfs->old_fs->super->s_blocks_count)
+		rfs->new_blk = rfs->old_fs->super->s_blocks_count;
 #endif
 }
 
@@ -1053,7 +1047,7 @@ static blk_t get_new_block(ext2_resize_t rfs)
 	ext2_filsys	fs = rfs->new_fs;
 
 	while (1) {
-		if (rfs->new_blk >= ext2fs_blocks_count(fs->super)) {
+		if (rfs->new_blk >= fs->super->s_blocks_count) {
 			if (rfs->alloc_state == DESPERATION)
 				return 0;
 
@@ -1066,12 +1060,12 @@ static blk_t get_new_block(ext2_resize_t rfs)
 			rfs->new_blk = fs->super->s_first_data_block;
 			continue;
 		}
-		if (ext2fs_test_block_bitmap2(fs->block_map, rfs->new_blk) ||
-		    ext2fs_test_block_bitmap2(rfs->reserve_blocks,
+		if (ext2fs_test_block_bitmap(fs->block_map, rfs->new_blk) ||
+		    ext2fs_test_block_bitmap(rfs->reserve_blocks,
 					     rfs->new_blk) ||
 		    ((rfs->alloc_state == AVOID_OLD) &&
-		     (rfs->new_blk < ext2fs_blocks_count(rfs->old_fs->super)) &&
-		     ext2fs_test_block_bitmap2(rfs->old_fs->block_map,
+		     (rfs->new_blk < rfs->old_fs->super->s_blocks_count) &&
+		     ext2fs_test_block_bitmap(rfs->old_fs->block_map,
 					      rfs->new_blk))) {
 			rfs->new_blk++;
 			continue;
@@ -1095,8 +1089,8 @@ static errcode_t resize2fs_get_alloc_block(ext2_filsys fs, blk64_t goal,
 		printf("get_alloc_block allocating %u\n", blk);
 #endif
 
-	ext2fs_mark_block_bitmap2(rfs->old_fs->block_map, blk);
-	ext2fs_mark_block_bitmap2(rfs->new_fs->block_map, blk);
+	ext2fs_mark_block_bitmap(rfs->old_fs->block_map, blk);
+	ext2fs_mark_block_bitmap(rfs->new_fs->block_map, blk);
 	*ret = (blk64_t) blk;
 	return 0;
 }
@@ -1138,10 +1132,10 @@ static errcode_t block_mover(ext2_resize_t rfs)
 	to_move = moved = 0;
 	init_block_alloc(rfs);
 	for (blk = old_fs->super->s_first_data_block;
-	     blk < ext2fs_blocks_count(old_fs->super); blk++) {
-		if (!ext2fs_test_block_bitmap2(old_fs->block_map, blk))
+	     blk < old_fs->super->s_blocks_count; blk++) {
+		if (!ext2fs_test_block_bitmap(old_fs->block_map, blk))
 			continue;
-		if (!ext2fs_test_block_bitmap2(rfs->move_blocks, blk))
+		if (!ext2fs_test_block_bitmap(rfs->move_blocks, blk))
 			continue;
 		if (ext2fs_badblocks_list_test(badblock_list, blk)) {
 			ext2fs_badblocks_list_del(badblock_list, blk);
@@ -1154,7 +1148,7 @@ static errcode_t block_mover(ext2_resize_t rfs)
 			retval = ENOSPC;
 			goto errout;
 		}
-		ext2fs_block_alloc_stats2(fs, new_blk, +1);
+		ext2fs_block_alloc_stats(fs, new_blk, +1);
 		ext2fs_add_extent_entry(rfs->bmap, blk, new_blk);
 		to_move++;
 	}
@@ -1194,11 +1188,11 @@ static errcode_t block_mover(ext2_resize_t rfs)
 			c = size;
 			if (c > fs->inode_blocks_per_group)
 				c = fs->inode_blocks_per_group;
-			retval = io_channel_read_blk64(fs->io, old_blk, c,
-						       rfs->itable_buf);
+			retval = io_channel_read_blk(fs->io, old_blk, c,
+						     rfs->itable_buf);
 			if (retval) goto errout;
-			retval = io_channel_write_blk64(fs->io, new_blk, c,
-							rfs->itable_buf);
+			retval = io_channel_write_blk(fs->io, new_blk, c,
+						      rfs->itable_buf);
 			if (retval) goto errout;
 			size -= c;
 			new_blk += c;
@@ -1332,10 +1326,10 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
 	 * is larger.  We need to do this to avoid catching an error
 	 * by the block iterator routines
 	 */
-	orig_size = ext2fs_blocks_count(rfs->old_fs->super);
-	if (orig_size < ext2fs_blocks_count(rfs->new_fs->super))
-		ext2fs_blocks_count_set(rfs->old_fs->super,
-				ext2fs_blocks_count(rfs->new_fs->super));
+	orig_size = rfs->old_fs->super->s_blocks_count;
+	if (orig_size < rfs->new_fs->super->s_blocks_count)
+		rfs->old_fs->super->s_blocks_count =
+			rfs->new_fs->super->s_blocks_count;
 
 	retval = ext2fs_open_inode_scan(rfs->old_fs, 0, &scan);
 	if (retval) goto errout;
@@ -1381,11 +1375,11 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
 		pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
 		pb.changed = 0;
 
-		if (ext2fs_file_acl_block(inode) && rfs->bmap) {
+		if (inode->i_file_acl && rfs->bmap) {
 			new_block = ext2fs_extent_translate(rfs->bmap,
-							    ext2fs_file_acl_block(inode));
+							    inode->i_file_acl);
 			if (new_block) {
-				ext2fs_file_acl_block_set(inode, new_block);
+				inode->i_file_acl = new_block;
 				retval = ext2fs_write_inode_full(rfs->old_fs,
 							    ino, inode, inode_size);
 				if (retval) goto errout;
@@ -1443,7 +1437,7 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
 	io_channel_flush(rfs->old_fs->io);
 
 errout:
-	ext2fs_blocks_count_set(rfs->old_fs->super, orig_size);
+	rfs->old_fs->super->s_blocks_count = orig_size;
 	if (rfs->bmap) {
 		ext2fs_free_extent_table(rfs->bmap);
 		rfs->bmap = 0;
@@ -1610,8 +1604,8 @@ static errcode_t move_itables(ext2_resize_t rfs)
 	 */
 	to_move = moved = 0;
 	for (i=0; i < max_groups; i++)
-		if (ext2fs_inode_table_loc(rfs->old_fs, i) !=
-		    ext2fs_inode_table_loc(fs, i))
+		if (rfs->old_fs->group_desc[i].bg_inode_table !=
+		    fs->group_desc[i].bg_inode_table)
 			to_move++;
 
 	if (to_move == 0)
@@ -1627,8 +1621,8 @@ static errcode_t move_itables(ext2_resize_t rfs)
 	rfs->old_fs->flags |= EXT2_FLAG_MASTER_SB_ONLY;
 
 	for (i=0; i < max_groups; i++) {
-		old_blk = ext2fs_inode_table_loc(rfs->old_fs, i);
-		new_blk = ext2fs_inode_table_loc(fs, i);
+		old_blk = rfs->old_fs->group_desc[i].bg_inode_table;
+		new_blk = fs->group_desc[i].bg_inode_table;
 		diff = new_blk - old_blk;
 
 #ifdef RESIZE2FS_DEBUG
@@ -1640,9 +1634,9 @@ static errcode_t move_itables(ext2_resize_t rfs)
 		if (!diff)
 			continue;
 
-		retval = io_channel_read_blk64(fs->io, old_blk,
-					       fs->inode_blocks_per_group,
-					       rfs->itable_buf);
+		retval = io_channel_read_blk(fs->io, old_blk,
+					     fs->inode_blocks_per_group,
+					     rfs->itable_buf);
 		if (retval)
 			goto errout;
 		/*
@@ -1664,15 +1658,15 @@ static errcode_t move_itables(ext2_resize_t rfs)
 		if (n > diff)
 			num -= n;
 
-		retval = io_channel_write_blk64(fs->io, new_blk,
-						num, rfs->itable_buf);
+		retval = io_channel_write_blk(fs->io, new_blk,
+					      num, rfs->itable_buf);
 		if (retval) {
-			io_channel_write_blk64(fs->io, old_blk,
-					       num, rfs->itable_buf);
+			io_channel_write_blk(fs->io, old_blk,
+					     num, rfs->itable_buf);
 			goto errout;
 		}
 		if (n > diff) {
-			retval = io_channel_write_blk64(fs->io,
+			retval = io_channel_write_blk(fs->io,
 			      old_blk + fs->inode_blocks_per_group,
 			      diff, (rfs->itable_buf +
 				     (fs->inode_blocks_per_group - diff) *
@@ -1681,11 +1675,11 @@ static errcode_t move_itables(ext2_resize_t rfs)
 				goto errout;
 		}
 
-		for (blk = ext2fs_inode_table_loc(rfs->old_fs, i), j=0;
+		for (blk = rfs->old_fs->group_desc[i].bg_inode_table, j=0;
 		     j < fs->inode_blocks_per_group ; j++, blk++)
-			ext2fs_block_alloc_stats2(fs, blk, -1);
+			ext2fs_block_alloc_stats(fs, blk, -1);
 
-		ext2fs_inode_table_loc_set(rfs->old_fs, i, new_blk);
+		rfs->old_fs->group_desc[i].bg_inode_table = new_blk;
 		ext2fs_group_desc_csum_set(rfs->old_fs, i);
 		ext2fs_mark_super_dirty(rfs->old_fs);
 		ext2fs_flush(rfs->old_fs);
@@ -1735,7 +1729,7 @@ static errcode_t fix_resize_inode(ext2_filsys fs)
 		ext2fs_mark_super_dirty(fs);
 
 		if ((blk = inode.i_block[EXT2_DIND_BLOCK]) != 0)
-			ext2fs_block_alloc_stats2(fs, blk, -1);
+			ext2fs_block_alloc_stats(fs, blk, -1);
 
 		memset(&inode, 0, sizeof(inode));
 
@@ -1761,8 +1755,8 @@ static errcode_t fix_resize_inode(ext2_filsys fs)
 
 	memset(block_buf, 0, fs->blocksize);
 
-	retval = io_channel_write_blk64(fs->io, inode.i_block[EXT2_DIND_BLOCK],
-					1, block_buf);
+	retval = io_channel_write_blk(fs->io, inode.i_block[EXT2_DIND_BLOCK],
+				      1, block_buf);
 	if (retval) goto errout;
 
 	retval = ext2fs_create_resize_inode(fs);
@@ -1773,25 +1767,6 @@ errout:
 	if (block_buf)
 		ext2fs_free_mem(&block_buf);
 	return retval;
-}
-
-/*
- * Fix the exclude inode
- */
-static errcode_t fix_exclude_inode(ext2_filsys fs)
-{
-	if (!(fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
-		return 0;
-	/* 
-	 * create_exclude_inode():
-	 * - updates bg_exclude_bitmap for existing block groups
-	 * - allocates exclude bitmap blocks for new block groups
-	 * - doesn't free exclude bitmap blocks of deleted block group,
-	 *   so when resizing from large to small filesystem, 
-	 *   it would be wise to remove the exclude inode beforehand.
-	 */
-	return ext2fs_create_exclude_inode(fs);
 }
 
 /*
@@ -1812,7 +1787,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 	/*
 	 * First calculate the block statistics
 	 */
-	uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT);
+	uninit = fs->group_desc[group].bg_flags & EXT2_BG_BLOCK_UNINIT;
 	ext2fs_super_and_bgd_loc(fs, group, &super_blk, &old_desc_blk,
 				 &new_desc_blk, 0);
 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
@@ -1821,32 +1796,33 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 		old_desc_blocks = fs->desc_blocks +
 			fs->super->s_reserved_gdt_blocks;
 	for (blk = fs->super->s_first_data_block;
-	     blk < ext2fs_blocks_count(fs->super); blk++) {
+	     blk < fs->super->s_blocks_count; blk++) {
 		if ((uninit &&
 		     !((blk == super_blk) ||
 		       ((old_desc_blk && old_desc_blocks &&
 			 (blk >= old_desc_blk) &&
 			 (blk < old_desc_blk + old_desc_blocks))) ||
 		       ((new_desc_blk && (blk == new_desc_blk))) ||
-		       (blk == ext2fs_block_bitmap_loc(fs, group)) ||
-		       (blk == ext2fs_inode_bitmap_loc(fs, group)) ||
-		       ((blk >= ext2fs_inode_table_loc(fs, group) &&
-			 (blk < ext2fs_inode_table_loc(fs, group)
+		       (blk == fs->group_desc[group].bg_block_bitmap) ||
+		       (blk == fs->group_desc[group].bg_inode_bitmap) ||
+		       ((blk >= fs->group_desc[group].bg_inode_table &&
+			 (blk < fs->group_desc[group].bg_inode_table
 			  + fs->inode_blocks_per_group))))) ||
-		    (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk))) {
+		    (!ext2fs_fast_test_block_bitmap(fs->block_map, blk))) {
 			group_free++;
 			total_free++;
 		}
 		count++;
 		if ((count == fs->super->s_blocks_per_group) ||
-		    (blk == ext2fs_blocks_count(fs->super)-1)) {
-			ext2fs_bg_free_blocks_count_set(fs, group, group_free);
+		    (blk == fs->super->s_blocks_count-1)) {
+			fs->group_desc[group].bg_free_blocks_count =
+				group_free;
 			ext2fs_group_desc_csum_set(fs, group);
 			group++;
 			count = 0;
 			group_free = 0;
-			uninit = (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)
-				  );
+			uninit = (fs->group_desc[group].bg_flags &
+				  EXT2_BG_BLOCK_UNINIT);
 			ext2fs_super_and_bgd_loc(fs, group, &super_blk,
 						 &old_desc_blk,
 						 &new_desc_blk, 0);
@@ -1858,7 +1834,7 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 					fs->super->s_reserved_gdt_blocks;
 		}
 	}
-	ext2fs_free_blocks_count_set(fs->super, total_free);
+	fs->super->s_free_blocks_count = total_free;
 
 	/*
 	 * Next, calculate the inode statistics
@@ -1869,22 +1845,24 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 	group = 0;
 
 	/* Protect loop from wrap-around if s_inodes_count maxed */
-	uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_INODE_UNINIT);
+	uninit = fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT;
 	for (ino = 1; ino <= fs->super->s_inodes_count && ino > 0; ino++) {
 		if (uninit ||
-		    !ext2fs_fast_test_inode_bitmap2(fs->inode_map, ino)) {
+		    !ext2fs_fast_test_inode_bitmap(fs->inode_map, ino)) {
 			group_free++;
 			total_free++;
 		}
 		count++;
 		if ((count == fs->super->s_inodes_per_group) ||
 		    (ino == fs->super->s_inodes_count)) {
-			ext2fs_bg_free_inodes_count_set(fs, group, group_free);
+			fs->group_desc[group].bg_free_inodes_count =
+				group_free;
 			ext2fs_group_desc_csum_set(fs, group);
 			group++;
 			count = 0;
 			group_free = 0;
-			uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_INODE_UNINIT);
+			uninit = (fs->group_desc[group].bg_flags &
+				  EXT2_BG_INODE_UNINIT);
 		}
 	}
 	fs->super->s_free_inodes_count = total_free;
@@ -1902,10 +1880,6 @@ static errcode_t fix_sb_journal_backup(ext2_filsys fs)
 	struct ext2_inode inode;
 
 	if (!(fs->super->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
-		return 0;
-
-	/* External journal? Nothing to do. */
-	if (fs->super->s_journal_dev && !fs->super->s_journal_inum)
 		return 0;
 
 	retval = ext2fs_read_inode(fs, fs->super->s_journal_inum, &inode);
@@ -1926,8 +1900,6 @@ blk_t calculate_minimum_resize_size(ext2_filsys fs)
 	blk_t inode_count, blks_needed, groups, data_blocks;
 	blk_t grp, data_needed, last_start;
 	int overhead = 0, num_of_superblocks = 0;
-	int extra_groups = 0;
-	int flexbg_size = 1 << fs->super->s_log_groups_per_flex;
 
 	/*
 	 * first figure out how many group descriptors we need to
@@ -1951,8 +1923,8 @@ blk_t calculate_minimum_resize_size(ext2_filsys fs)
 	}
 
 	/* calculate how many blocks are needed for data */
-	data_needed = ext2fs_blocks_count(fs->super) -
-		ext2fs_free_blocks_count(fs->super);
+	data_needed = fs->super->s_blocks_count -
+		fs->super->s_free_blocks_count;
 	data_needed -= SUPER_OVERHEAD(fs) * num_of_superblocks;
 	data_needed -= META_OVERHEAD(fs) * fs->group_desc_count;
 
@@ -1962,9 +1934,11 @@ blk_t calculate_minimum_resize_size(ext2_filsys fs)
 		 * of inode tables of slack space so the resize
 		 * operation can be guaranteed to finish.
 		 */
+		int flexbg_size = 1 << fs->super->s_log_groups_per_flex;
+		int extra_groups;
+
 		extra_groups = flexbg_size - (groups & (flexbg_size - 1));
 		data_needed += META_OVERHEAD(fs) * extra_groups;
-		extra_groups = groups % flexbg_size;
 	}
 
 	/*
@@ -2028,20 +2002,6 @@ blk_t calculate_minimum_resize_size(ext2_filsys fs)
 		}
 
 		groups += extra_grps;
-		extra_groups += extra_grps;
-		if (fs->super->s_feature_incompat
-			& EXT4_FEATURE_INCOMPAT_FLEX_BG
-		    && extra_groups > flexbg_size) {
-			/*
-			 * For ext4 we need to allow for up to a flex_bg worth
-			 * of inode tables of slack space so the resize
-			 * operation can be guaranteed to finish.
-			 */
-			extra_groups = flexbg_size -
-						(groups & (flexbg_size - 1));
-			data_needed += META_OVERHEAD(fs) * extra_groups;
-			extra_groups = groups % flexbg_size;
-		}
 	}
 
 	/* now for the fun voodoo */
@@ -2082,16 +2042,15 @@ blk_t calculate_minimum_resize_size(ext2_filsys fs)
 	 * If at this point we've already added up more "needed" than
 	 * the current size, just return current size as minimum.
 	 */
-	if (blks_needed >= ext2fs_blocks_count(fs->super))
-		return ext2fs_blocks_count(fs->super);
+	if (blks_needed >= fs->super->s_blocks_count)
+		return fs->super->s_blocks_count;
 	/*
 	 * We need to reserve a few extra blocks if extents are
 	 * enabled, in case we need to grow the extent tree.  The more
 	 * we shrink the file system, the more space we need.
 	 */
 	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS)
-		blks_needed += (ext2fs_blocks_count(fs->super) - 
-				blks_needed)/500;
+		blks_needed += (fs->super->s_blocks_count - blks_needed)/500;
 
 	return blks_needed;
 }
