@@ -291,8 +291,8 @@ struct ext2_dx_countlimit {
 /* end of snapshot persistent flags */
 #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
 
-#define EXT2_FL_USER_VISIBLE		0x0FFBDFFF /* User visible flags */
-#define EXT2_FL_USER_MODIFIABLE		0x031080FF /* User modifiable flags */
+#define EXT2_FL_USER_VISIBLE		0x1FFBDFFF /* User visible flags */
+#define EXT2_FL_USER_MODIFIABLE		0x131080FF /* User modifiable flags */
 
 /*
  * ioctl commands

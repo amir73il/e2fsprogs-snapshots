@@ -257,8 +257,10 @@ no_valid_journal:
 
 /* Helper function for remove_special_inode */
 static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
-			       int blockcnt EXT2FS_ATTR((unused)),
-			       void *private EXT2FS_ATTR((unused)))
+		e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+		blk_t ref_block EXT2FS_ATTR((unused)),
+		int ref_offset EXT2FS_ATTR((unused)),
+		void *private EXT2FS_ATTR((unused)))
 {
 	blk_t	block;
 	int	group;
@@ -273,9 +275,13 @@ static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
 }
 
 /*
- * Remove a special inode from the filesystem
+ * Remove a special inode from the filesystem:
+ * - resize inode, @nlink = 0
+ * - exclude inode, @nlink = 0
+ * - snapshot inodes, @nlink = 1 (snapshots directory)
  */
-static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode)
+static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino,
+		struct ext2_inode *inode, int nlink)
 {
 	int retval = ext2fs_read_bitmaps(fs);
 	if (retval) {
@@ -283,7 +289,7 @@ static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino, struct ext2_ino
 				_("while reading bitmaps"));
 		exit(1);
 	}
-	retval = ext2fs_block_iterate(fs, ino,
+	retval = ext2fs_block_iterate2(fs, ino,
 			BLOCK_FLAG_READ_ONLY, NULL,
 			release_blocks_proc, NULL);
 	if (retval) {
@@ -291,9 +297,68 @@ static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino, struct ext2_ino
 				_("while clearing inode"));
 		exit(1);
 	}
-	memset(inode, 0, sizeof(*inode));
+	if (nlink) {
+		/* reset truncated inode */
+		inode->i_size = 0;
+		inode->i_size_high = 0;
+		inode->i_blocks = 0;
+		memset(inode->i_block, 0, sizeof(inode->i_block));
+	} else {
+		/* clear unlinked inode */
+		memset(inode, 0, sizeof(*inode));
+	}
 	ext2fs_mark_bb_dirty(fs);
 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+}
+
+/*
+ * Discard snapshots list (free all snapshot blocks)
+ */
+static void discard_snapshot_list(ext2_filsys fs)
+{
+	struct ext2_super_block *sb = fs->super;
+	struct ext2_inode	inode;
+	ext2_ino_t		ino = sb->s_last_snapshot;
+	errcode_t		retval;
+	int i;
+	
+	if (ino)
+		fputs(_("Discarding snapshots: "), stderr);
+
+	while (ino) {
+		retval = ext2fs_read_inode(fs, ino,  &inode);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while reading snapshot inode %u"),
+					ino);
+			exit(1);
+		}
+
+		remove_special_inode(fs, ino, &inode, 1);
+
+		retval = ext2fs_write_inode(fs, ino, &inode);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while writing snapshot inode %u"),
+					ino);
+			exit(1);
+		}
+
+		fprintf(stderr, _("%u,"), inode.i_generation);
+		ino = inode.i_next_snapshot;
+	}
+	
+	if (sb->s_last_snapshot) {
+		sb->s_last_snapshot = 0;
+		sb->s_last_snapshot_id = 0;
+		sb->s_snapshot_r_blocks_count = 0;
+		fputs(_("done\n"), stderr);
+	}
+	
+	/* currently, the only way to 'fix' the snapshots is to discard them */
+	sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT;
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+	ext2fs_mark_super_dirty(fs);
 }
 
 /*
@@ -327,7 +392,7 @@ static void remove_exclude_inode(ext2_filsys fs)
 		exit(1);
 	}
 	
-	remove_special_inode(fs, ino, &inode);
+	remove_special_inode(fs, ino, &inode, 0);
 	
 	retval = ext2fs_write_inode(fs, ino, &inode);
 	if (retval) {
@@ -353,7 +418,7 @@ static void remove_journal_inode(ext2_filsys fs)
 		exit(1);
 	}
 	if (ino == EXT2_JOURNAL_INO)
-		remove_special_inode(fs, ino, &inode);
+		remove_special_inode(fs, ino, &inode, 0);
 	else
 		inode.i_flags &= ~EXT2_IMMUTABLE_FL;
 	retval = ext2fs_write_inode(fs, ino, &inode);
@@ -532,12 +597,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
-		if (sb->s_last_snapshot) {
-			sb->s_last_snapshot = 0;
-			sb->s_last_snapshot_id = 0;
- 			sb->s_snapshot_r_blocks_count = 0;
-			fputs(_("Discarding snapshots: done\n"), stderr);
-		}
+		discard_snapshot_list(fs);
 		if (sb->s_feature_compat & 
 				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE) {
 			/* reset exclude bitmap blocks */
@@ -545,8 +605,6 @@ static void update_feature_set(ext2_filsys fs, char *features)
 			if (retval)
 				sb->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
 		}
-		/* currently, the only way to 'fix' the snapshots is to discard them */
-		sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT;
 	}
 	else if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		if ((sb->s_feature_compat &
