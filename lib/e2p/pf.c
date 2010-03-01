@@ -46,16 +46,30 @@ static struct flags_name flags_array[] = {
 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
 	{ EXT4_EXTENTS_FL, "e", "Extents" },
 	{ EXT4_HUGE_FILE_FL, "h", "Huge_file" },
+	{ NEXT3_SNAPFILE_FL, "x", "Snapshot_File" },
+	{ 0, NULL, NULL }
+};
+
+static struct flags_name snapshot_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },
+	{ NEXT3_SNAPFILE_ENABLED_FL, "n", "eNabled" },
+	{ NEXT3_SNAPFILE_ACTIVE_FL, "a", "Active" },
+	{ NEXT3_SNAPFILE_INUSE_FL, "p", "inuse_by_Previous" },
+	{ NEXT3_SNAPFILE_DELETED_FL, "s", "Deleted" },
+	{ NEXT3_SNAPFILE_SHRUNK_FL, "h", "sHrunk" },
+	{ NEXT3_SNAPFILE_OPEN_FL, "o", "mOunted" },
+	{ NEXT3_SNAPFILE_TAGGED_FL, "t", "Tagged" },
 	{ 0, NULL, NULL }
 };
 
 void print_flags (FILE * f, unsigned long flags, unsigned options)
 {
+	struct flags_name *array = ((options & PFOPT_SNAPSHOT) ? snapshot_flags_array : flags_array);
 	int long_opt = (options & PFOPT_LONG);
 	struct flags_name *fp;
 	int	first = 1;
 
-	for (fp = flags_array; fp->flag != 0; fp++) {
+	for (fp = array; fp->flag != 0; fp++) {
 		if (flags & fp->flag) {
 			if (long_opt) {
 				if (first)

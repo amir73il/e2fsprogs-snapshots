@@ -293,6 +293,11 @@ redo_counts:
 	} else if (fixit == 0)
 		ext2fs_unmark_valid(fs);
 
+	if (fs->super->s_feature_ro_compat &
+			NEXT3_FEATURE_RO_COMPAT_A_SNAPSHOT)
+		/* ignore free block counts in next3 snapshot image */
+		goto errout;
+
 	for (i = 0; i < fs->group_desc_count; i++) {
 		if (free_array[i] != fs->group_desc[i].bg_free_blocks_count) {
 			pctx.group = i;

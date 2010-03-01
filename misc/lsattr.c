@@ -70,7 +70,7 @@ static int generation_opt;
 
 static void usage(void)
 {
-	fprintf(stderr, _("Usage: %s [-RVadlv] [files...]\n"), program_name);
+	fprintf(stderr, _("Usage: %s [-XRVadlv] [files...]\n"), program_name);
 	exit(1);
 }
 
@@ -169,9 +169,12 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
-	while ((c = getopt (argc, argv, "RVadlv")) != EOF)
+	while ((c = getopt (argc, argv, "XRVadlv")) != EOF)
 		switch (c)
 		{
+			case 'X':
+				pf_options |= PFOPT_SNAPSHOT;
+				break;
 			case 'R':
 				recursive = 1;
 				break;
@@ -185,7 +188,7 @@ int main (int argc, char ** argv)
 				dirs_opt = 1;
 				break;
 			case 'l':
-				pf_options = PFOPT_LONG;
+				pf_options |= PFOPT_LONG;
 				break;
 			case 'v':
 				generation_opt = 1;

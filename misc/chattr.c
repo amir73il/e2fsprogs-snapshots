@@ -82,7 +82,10 @@ static unsigned long sf;
 static void usage(void)
 {
 	fprintf(stderr,
-		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
+		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
+		program_name);
+	fprintf(stderr,
+		_("Usage: %s -X [-+=Snapshot] files...\n"),
 		program_name);
 	exit(1);
 }
@@ -92,7 +95,7 @@ struct flags_char {
 	char 		optchar;
 };
 
-static const struct flags_char flags_array[] = {
+static const struct flags_char ext2_flags_array[] = {
 	{ EXT2_NOATIME_FL, 'A' },
 	{ EXT2_SYNC_FL, 'S' },
 	{ EXT2_DIRSYNC_FL, 'D' },
@@ -106,6 +109,21 @@ static const struct flags_char flags_array[] = {
 	{ EXT2_UNRM_FL, 'u' },
 	{ EXT2_NOTAIL_FL, 't' },
 	{ EXT2_TOPDIR_FL, 'T' },
+	{ NEXT3_SNAPFILE_FL, 'x' },
+	{ 0, 0 }
+};
+
+static const struct flags_char *flags_array = ext2_flags_array;
+
+static struct flags_char snapshot_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
+	{ NEXT3_SNAPFILE_ENABLED_FL, 'n' },
+	{ NEXT3_SNAPFILE_ACTIVE_FL, 'a' },
+	{ NEXT3_SNAPFILE_INUSE_FL, 'p' },
+	{ NEXT3_SNAPFILE_DELETED_FL, 's' },
+	{ NEXT3_SNAPFILE_SHRUNK_FL, 'h' },
+	{ NEXT3_SNAPFILE_OPEN_FL, 'o' },
+	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
 	{ 0, 0 }
 };
 
@@ -131,6 +149,10 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
+			if (*p == 'X') {
+				flags_array = snapshot_flags_array;
+				continue;
+			}
 			if (*p == 'R') {
 				recursive = 1;
 				continue;

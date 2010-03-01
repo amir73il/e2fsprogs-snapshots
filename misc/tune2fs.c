@@ -118,6 +118,8 @@ static void usage(void)
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
+		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
+		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
 	EXT2_FEATURE_INCOMPAT_FILETYPE |
@@ -125,6 +127,7 @@ static __u32 ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
@@ -135,6 +138,8 @@ static __u32 ok_features[3] = {
 static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
+		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
+		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
@@ -142,6 +147,7 @@ static __u32 clear_ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
 		EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|
@@ -249,7 +255,7 @@ no_valid_journal:
 	free(journal_path);
 }
 
-/* Helper function for remove_journal_inode */
+/* Helper function for remove_special_inode */
 static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
 			       int blockcnt EXT2FS_ATTR((unused)),
 			       void *private EXT2FS_ATTR((unused)))
@@ -267,6 +273,71 @@ static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
 }
 
 /*
+ * Remove a special inode from the filesystem
+ */
+static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode)
+{
+	int retval = ext2fs_read_bitmaps(fs);
+	if (retval) {
+		com_err(program_name, retval,
+				_("while reading bitmaps"));
+		exit(1);
+	}
+	retval = ext2fs_block_iterate(fs, ino,
+			BLOCK_FLAG_READ_ONLY, NULL,
+			release_blocks_proc, NULL);
+	if (retval) {
+		com_err(program_name, retval,
+				_("while clearing inode"));
+		exit(1);
+	}
+	memset(inode, 0, sizeof(*inode));
+	ext2fs_mark_bb_dirty(fs);
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+}
+
+/*
+ * Remove the exclude inode from the filesystem
+ */
+static void remove_exclude_inode(ext2_filsys fs)
+{
+	struct ext2_group_desc *gd;
+	struct ext2_inode	inode;
+	ino_t			ino = EXT2_EXCLUDE_INO;
+	errcode_t		retval;
+	int i;
+
+	/*
+	 * reset bg_exclude_bitmap and bg_cow_bitmap to zero
+	 */
+	for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
+			i++, gd++) {
+		gd->bg_exclude_bitmap = 0;
+		gd->bg_cow_bitmap = 0;
+	}
+	/* clear fix_exclude flag */
+	fs->super->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+	ext2fs_mark_super_dirty(fs);
+
+	retval = ext2fs_read_inode(fs, ino,  &inode);
+	if (retval) {
+		com_err(program_name, retval,
+			_("while reading exclude inode"));
+		exit(1);
+	}
+	
+	remove_special_inode(fs, ino, &inode);
+	
+	retval = ext2fs_write_inode(fs, ino, &inode);
+	if (retval) {
+		com_err(program_name, retval,
+			_("while writing exclude inode"));
+		exit(1);
+	}
+}
+
+/*
  * Remove the journal inode from the filesystem
  */
 static void remove_journal_inode(ext2_filsys fs)
@@ -281,25 +352,9 @@ static void remove_journal_inode(ext2_filsys fs)
 			_("while reading journal inode"));
 		exit(1);
 	}
-	if (ino == EXT2_JOURNAL_INO) {
-		retval = ext2fs_read_bitmaps(fs);
-		if (retval) {
-			com_err(program_name, retval,
-				_("while reading bitmaps"));
-			exit(1);
-		}
-		retval = ext2fs_block_iterate(fs, ino,
-					      BLOCK_FLAG_READ_ONLY, NULL,
-					      release_blocks_proc, NULL);
-		if (retval) {
-			com_err(program_name, retval,
-				_("while clearing journal inode"));
-			exit(1);
-		}
-		memset(&inode, 0, sizeof(inode));
-		ext2fs_mark_bb_dirty(fs);
-		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-	} else
+	if (ino == EXT2_JOURNAL_INO)
+		remove_special_inode(fs, ino, &inode);
+	else
 		inode.i_flags &= ~EXT2_IMMUTABLE_FL;
 	retval = ext2fs_write_inode(fs, ino, &inode);
 	if (retval) {
@@ -326,6 +381,31 @@ static void update_mntopts(ext2_filsys fs, char *mntopts)
 	ext2fs_mark_super_dirty(fs);
 }
 
+static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask, int on)
+{
+	struct ext2_super_block *sb= fs->super;
+
+	if ((mount_flags & EXT2_MF_MOUNTED) &&
+		!(mount_flags & EXT2_MF_READONLY)) {
+		fprintf(stderr, _("The '%s' feature may only be "
+					"%s when the filesystem is\n"
+					"unmounted or mounted read-only.\n"),
+				e2p_feature2string(compat, mask),
+				on ? "set" : "cleared");
+		exit(1);
+	}
+	if (sb->s_feature_incompat &
+		EXT3_FEATURE_INCOMPAT_RECOVER) {
+		fprintf(stderr, _("The needs_recovery flag is set.  "
+					"Please run e2fsck before %s\n"
+					"the '%s' flag.\n"),
+				on ? "setting" : "clearing",
+				e2p_feature2string(compat, mask));
+		exit(1);
+	}
+	return 1;
+}
+
 /*
  * Update the feature set as provided by the user.
  */
@@ -335,6 +415,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	__u32		old_features[3];
 	int		type_err;
 	unsigned int	mask_err;
+	errcode_t retval;
 
 #define FEATURE_ON(type, mask) (!(old_features[(type)] & (mask)) && \
 				((&sb->s_feature_compat)[(type)] & (mask)))
@@ -342,10 +423,29 @@ static void update_feature_set(ext2_filsys fs, char *features)
 				 !((&sb->s_feature_compat)[(type)] & (mask)))
 #define FEATURE_CHANGED(type, mask) ((mask) & \
 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
+#define FEATURE_ON_SAFE(compat, mask) \
+	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
+#define FEATURE_OFF_SAFE(compat, mask) \
+	(FEATURE_OFF(compat, mask) && verify_clean_fs(fs, compat, mask, 0))
 
 	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
 	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
+
+	/* disallow changing features when filesystem has snapshots */
+	if (sb->s_feature_ro_compat & 
+		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
+		fputs(_("The filesystem has snapshots.  "
+				"Please clear the has_snapshot flag\n"
+				"before clearing/setting other filesystem flags.\n"), 
+				stderr);
+		ok_features[E2P_FEATURE_COMPAT] = 0;
+		ok_features[E2P_FEATURE_INCOMPAT] = 0;
+		ok_features[E2P_FEATURE_RO_INCOMPAT] = NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
+		clear_ok_features[E2P_FEATURE_COMPAT] = 0;
+		clear_ok_features[E2P_FEATURE_INCOMPAT] = 0;
+		clear_ok_features[E2P_FEATURE_RO_INCOMPAT] = NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
+	}
 
 	if (e2p_edit_feature2(features, &sb->s_feature_compat,
 			      ok_features, clear_ok_features,
@@ -400,6 +500,81 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		if (!journal_size)
 			journal_size = -1;
 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+	}
+
+	if (FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) {
+		if (sb->s_feature_compat &
+		    EXT3_FEATURE_COMPAT_HAS_JOURNAL) {
+			/* update 'big_journal' flag according to existing journal size */
+			ext2fs_check_journal_size(fs);
+			if (!FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL))
+				fputs(_("the filesystem already has a journal.\n"
+							"Please remove it before changing "
+							"the big_journal flag.\n"), stderr);
+		}
+		else if (sb->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
+			/* create 'big_journal' */
+			if (!journal_size)
+				journal_size = -1;
+		}
+	}
+
+	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+		remove_exclude_inode(fs);
+	}
+	else if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+		retval = ext2fs_create_exclude_inode(fs, 1);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while creating exclude inode"));
+			exit(1);
+		}
+	}
+
+	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+		if (sb->s_last_snapshot) {
+			sb->s_last_snapshot = 0;
+			sb->s_last_snapshot_id = 0;
+ 			sb->s_snapshot_r_blocks_count = 0;
+			fputs(_("Discarding snapshots: done\n"), stderr);
+		}
+		if (sb->s_feature_compat & 
+				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE) {
+			/* reset exclude bitmap blocks */
+			retval = ext2fs_create_exclude_inode(fs, 1);
+			if (retval)
+				sb->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+		}
+		/* currently, the only way to 'fix' the snapshots is to discard them */
+		sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT;
+	}
+	else if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+		if ((sb->s_feature_compat &
+		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
+			/* update 'big_journal' flag according to existing journal size */
+			ext2fs_check_journal_size(fs);
+		}
+		else if (!journal_size) {
+			/* create 'big_journal' */
+			journal_size = -1;
+			sb->s_feature_compat |= NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
+		}
+	
+		/* allocate/reset exclude bitmap blocks */
+		retval = ext2fs_create_exclude_inode(fs, 1);
+		if (!retval)
+			sb->s_feature_compat |= NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+
+		type_err = E2P_FEATURE_COMPAT;
+		if (!(sb->s_feature_compat &
+			(mask_err = NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) ||
+			!(sb->s_feature_compat &
+			(mask_err = NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)))
+			fprintf(stderr,_("Warning: the '%s' flag is not set.\n"
+				"For best snapshots performance, set the '%s' flag\n"
+				"before setting the 'has_snapshot' flag.\n"),
+				e2p_feature2string(type_err, mask_err),
+				e2p_feature2string(type_err, mask_err));
 	}
 
 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_DIR_INDEX)) {
@@ -1791,8 +1966,10 @@ retry_open:
 		}
 	}
 
-	if (l_flag)
+	if (l_flag) {
+		ext2fs_check_journal_size(fs);
 		list_super(sb);
+	}
 	if (stride_set) {
 		sb->s_raid_stride = stride;
 		ext2fs_mark_super_dirty(fs);
