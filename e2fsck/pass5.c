@@ -294,7 +294,7 @@ redo_counts:
 		ext2fs_unmark_valid(fs);
 
 	if (fs->super->s_feature_ro_compat &
-			NEXT3_FEATURE_RO_COMPAT_A_SNAPSHOT)
+			NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT)
 		/* ignore free block counts in next3 snapshot image */
 		goto errout;
 
