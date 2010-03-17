@@ -426,7 +426,6 @@ int ext2fs_check_journal_size(ext2_filsys fs)
 
 	/* read journal inode size */
 	j_blocks = j_inode.i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
-	fs->super->s_journal_blocks = j_blocks;
 	
 	/* fix the 'big_journal' feature */
 	if (j_blocks >= NEXT3_MIN_JOURNAL_BLOCKS)

@@ -229,9 +229,9 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
-	/* never release orphan inodes when scanning volume with next3 snapshots */
+	/* never release orphan inodes when scanning volume with active snapshot */
 	if ((fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
-		 fs->super->s_last_snapshot != 0)
+		 fs->super->s_snapshot_inum)
 		return 0;
 
 	if ((ino = fs->super->s_last_orphan) == 0)
@@ -496,11 +496,13 @@ void check_exclude_inode(e2fsck_t ctx)
 	}	
 	else if (!(fs->super->s_feature_ro_compat & 
 		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
-			!fs->super->s_last_snapshot) {
+			(!fs->super->s_snapshot_inum &&
+			 !fs->super->s_last_snapshot)) {
 		/* create exclude inode and/or reset exclude bitmap */
 		int reset = 1;
 		if ((fs->super->s_feature_ro_compat & 
 				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT) ||
+			fs->super->s_snapshot_inum ||
 			fs->super->s_last_snapshot)
 			/* don't reset exclude bitmap when snapshots exist
 		         * or when fsck'ing a snapshot image */

@@ -320,8 +320,11 @@ static void discard_snapshot_list(ext2_filsys fs)
 	struct ext2_inode	inode;
 	ext2_ino_t		ino = sb->s_last_snapshot;
 	errcode_t		retval;
-	int i;
+	int i = 0;
 	
+	if (!ino)
+		/* no snapshot list, but maybe active snapshot exists? */
+		ino = sb->s_snapshot_inum;
 	if (ino)
 		fputs(_("Discarding snapshots: "), stderr);
 
@@ -346,16 +349,18 @@ static void discard_snapshot_list(ext2_filsys fs)
 
 		fprintf(stderr, _("%u,"), inode.i_generation);
 		ino = inode.i_next_snapshot;
+		i++;
 	}
 	
-	if (sb->s_last_snapshot) {
-		sb->s_last_snapshot = 0;
-		sb->s_last_snapshot_id = 0;
+	if (i > 0) {
+		sb->s_snapshot_inum = 0;
+		sb->s_snapshot_id = 0;
 		sb->s_snapshot_r_blocks_count = 0;
+		sb->s_last_snapshot = 0;
 		fputs(_("done\n"), stderr);
 	}
 	
-	/* currently, the only way to 'fix' the snapshots is to discard them */
+	/* no snapshots, so no snapshot problems to fix */
 	sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT;
 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 	ext2fs_mark_super_dirty(fs);
