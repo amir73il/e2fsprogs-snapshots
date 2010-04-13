@@ -39,6 +39,7 @@ struct problem_context {
 #define PR_LATCH_TOOBIG	0x0080	/* Latch for file to big errors */
 #define PR_LATCH_OPTIMIZE_DIR 0x0090 /* Latch for optimize directories */
 #define PR_LATCH_BG_CHECKSUM 0x00A0  /* Latch for block group checksums */
+#define PR_LATCH_XBITMAP 0x00B0 /* Latch for pass 5 exclude bitmap proc. */
 
 #define PR_LATCH(x)	((((x) & PR_LATCH_MASK) >> 4) - 1)
 
@@ -228,16 +229,16 @@ struct problem_context {
 #define PR_0_GDT_CSUM_LATCH			0x00003E
 
 /* Exclude_inode not enabled, but exclude inode is non-zero */
-#define PR_0_CLEAR_EXCLUDE_INODE			0x010100
+#define PR_0_CLEAR_EXCLUDE_INODE		0x000100
 
 /* Exclude inode invalid */
-#define PR_0_EXCLUDE_INODE_INVALID		0x010101
+#define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
 /* Exclude bitmap errors */
-#define PR_0_FIX_EXCLUDE_BITMAP			0x010102
+#define PR_0_FIX_EXCLUDE_BITMAP			0x000102
 
 /* Corrupted snapshot */
-#define PR_0_FIX_SNAPSHOT			0x010103
+#define PR_0_FIX_SNAPSHOT			0x000103
 
 
 /*
@@ -994,6 +995,24 @@ struct problem_context {
 
 /* Inode in use but group is marked INODE_UNINIT */
 #define PR_5_INODE_UNINIT		0x050019
+
+/* Exclude bitmap differences header */
+#define PR_5_EXCLUDE_BITMAP_HEADER	0x050100
+
+/* Block not excluded, but marked in exclude bitmap */
+#define PR_5_BLOCK_NOTEXCLUDED		0x050101
+
+/* Block excluded, but not marked in exclude bitmap */
+#define PR_5_BLOCK_EXCLUDED		0x050102
+
+/* Block range not excluded, but marked in exclude bitmap */
+#define PR_5_BLOCK_RANGE_NOTEXCLUDED	0x050103
+
+/* Block range excluded, but not marked in exclude bitmap */
+#define PR_5_BLOCK_RANGE_EXCLUDED	0x050104
+
+/* Exclude bitmap differences end */
+#define PR_5_EXCLUDE_BITMAP_END		0x050105
 
 /*
  * Post-Pass 5 errors
