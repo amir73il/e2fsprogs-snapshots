@@ -497,13 +497,13 @@ void check_exclude_inode(e2fsck_t ctx)
 	else if (!(fs->super->s_feature_ro_compat & 
 		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
 			(!fs->super->s_snapshot_inum &&
-			 !fs->super->s_last_snapshot)) {
+			 !fs->super->s_snapshot_list)) {
 		/* create exclude inode and/or reset exclude bitmap */
 		int reset = 1;
 		if ((fs->super->s_feature_ro_compat & 
 				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT) ||
 			fs->super->s_snapshot_inum ||
-			fs->super->s_last_snapshot)
+			fs->super->s_snapshot_list)
 			/* don't reset exclude bitmap when snapshots exist
 		         * or when fsck'ing a snapshot image */
 			reset = 0;

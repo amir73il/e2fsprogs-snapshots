@@ -600,10 +600,10 @@ struct ext2_super_block {
  	/*
  	 * Snapshots support valid if NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT is set.
  	 */
-	__u32	s_last_snapshot;	/* start of list of snapshot inodes */
-	__u32	s_snapshot_r_blocks_count; /* Reserved snapshot blocks count */
-	__u32	s_snapshot_id;		/* running snapshot ID */
-	__u32	s_snapshot_inum;	/* inode number of active snapshot */
+	__u32	s_snapshot_list;	/* Start of list of snapshot inodes */
+	__u32	s_snapshot_r_blocks_count; /* Reserved for active snapshot */
+	__u32	s_snapshot_id;		/* Sequential ID of active snapshot */
+	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
 };
 
 /*

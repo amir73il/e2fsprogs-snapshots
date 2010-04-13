@@ -319,9 +319,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
 		fprintf(f, "Snapshot reserved blocks:       %u\n",
 			sb->s_snapshot_r_blocks_count);
 	}
-	if (sb->s_last_snapshot)
-		fprintf(f, "First snapshot inode:       %u\n",
-			sb->s_last_snapshot);
+	if (sb->s_snapshot_list)
+		fprintf(f, "Snapshot list first inode:       %u\n",
+			sb->s_snapshot_list);
 	if ((sb->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX) ||
 	    sb->s_def_hash_version)
 		fprintf(f, "Default directory hash:   %s\n",

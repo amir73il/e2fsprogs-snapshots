@@ -318,7 +318,7 @@ static void discard_snapshot_list(ext2_filsys fs)
 {
 	struct ext2_super_block *sb = fs->super;
 	struct ext2_inode	inode;
-	ext2_ino_t		ino = sb->s_last_snapshot;
+	ext2_ino_t		ino = sb->s_snapshot_list;
 	errcode_t		retval;
 	int i = 0;
 	
@@ -356,7 +356,7 @@ static void discard_snapshot_list(ext2_filsys fs)
 		sb->s_snapshot_inum = 0;
 		sb->s_snapshot_id = 0;
 		sb->s_snapshot_r_blocks_count = 0;
-		sb->s_last_snapshot = 0;
+		sb->s_snapshot_list = 0;
 		fputs(_("done\n"), stderr);
 	}
 	
