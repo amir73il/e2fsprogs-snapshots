@@ -523,19 +523,40 @@ void check_snapshots(e2fsck_t ctx)
 {
 	struct ext2_super_block *sb = ctx->fs->super;
 	struct problem_context	pctx;
+	int cont;
 
 	if (!(sb->s_feature_ro_compat & 
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
-		!(sb->s_feature_ro_compat & 
-		 NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT))
+			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
+		!sb->s_snapshot_inum)
+		/* no active snapshot */
 		return;
 
-	/* corrupted snapshot need to be fixed */
-	clear_problem_context(&pctx);
-	if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
-		/* TODO: fix snapshot problems */
-		ctx->flags |= E2F_FLAG_ABORT;
+	if (sb->s_feature_ro_compat & 
+			NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT) {
+		/* corrupted snapshot need to be fixed */
+		clear_problem_context(&pctx);
+		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
+			/* TODO: fix snapshot problems */
+			ctx->flags |= E2F_FLAG_ABORT;
+			return;
+		}
+	}
+
+	if ((ctx->options & E2F_OPT_PREEN) ||
+		(ctx->options & E2F_OPT_NO))
+		/* preen and readonly modes are snapshot friendly */
 		return;
+
+	printf(_("%s has snapshots.  "), ctx->filesystem_name);
+	if (!ctx->interactive)
+		fatal_error(ctx, _("Cannot continue, aborting.\n\n"));
+	printf(_("\n\n\007\007\007\007WARNING!!!  "
+	       "Running e2fsck on filesystem with snapshots may\n"
+	       "damage the snapshots.\007\007\007\n\n"));
+	cont = ask_yn(_("Do you really want to continue"), -1);
+	if (!cont) {
+		printf (_("check aborted.\n"));
+		exit (0);
 	}
 }
 
