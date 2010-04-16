@@ -234,9 +234,6 @@ struct problem_context {
 /* Exclude inode invalid */
 #define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
-/* Exclude bitmap errors */
-#define PR_0_FIX_EXCLUDE_BITMAP			0x000102
-
 /* Corrupted snapshot */
 #define PR_0_FIX_SNAPSHOT			0x000103
 

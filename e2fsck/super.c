@@ -439,7 +439,7 @@ void check_exclude_inode(e2fsck_t ctx)
 	ext2_filsys fs = ctx->fs;
 	struct ext2_inode inode;
 	struct problem_context	pctx;
-	int		i;
+	int		i, reset;
 	blk_t		blk;
 	errcode_t	retval;
 
@@ -493,39 +493,26 @@ void check_exclude_inode(e2fsck_t ctx)
 					   "clear_exclude");
 			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
 		}
+		return;
 	}	
-	else if (!(fs->super->s_feature_ro_compat & 
-		 	 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
-			(!fs->super->s_snapshot_inum &&
-			 !fs->super->s_snapshot_list)) {
-		/* create exclude inode and/or reset exclude bitmap */
-		int reset = 1;
-		if ((fs->super->s_feature_ro_compat & 
-				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT) ||
-			fs->super->s_snapshot_inum ||
-			fs->super->s_snapshot_list)
-			/* don't reset exclude bitmap when snapshots exist
-		         * or when fsck'ing a snapshot image */
-			reset = 0;
-		clear_problem_context(&pctx);
-		pctx.errcode = ext2fs_create_exclude_inode(fs, reset);
-		if (pctx.errcode &&
+
+	/*
+	 * create exclude inode and/or reset exclude bitmap.
+	 * don't reset exclude bitmap when snapshots exist
+	 * or when fsck'ing a snapshot image.
+	 */
+	reset = (!(fs->super->s_feature_ro_compat & 
+				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT) &&
+			!fs->super->s_snapshot_inum &&
+			!fs->super->s_snapshot_list);
+	clear_problem_context(&pctx);
+	pctx.errcode = ext2fs_create_exclude_inode(fs, reset);
+	if (pctx.errcode &&
 			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
-			memset(&inode, 0, sizeof(inode));
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
-					   "clear_exclude");
-			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
-		}
-	}
-	else if (fs->super->s_feature_ro_compat & 
-			NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE) {
-		/* exclude bitmap errors needs to be fixed */
-		clear_problem_context(&pctx);
-		if (fix_problem(ctx, PR_0_FIX_EXCLUDE_BITMAP, &pctx)) {
-			/* TODO: fix (exclude bitmap != snapshot blocks) */
-			ctx->flags |= E2F_FLAG_ABORT;
-			return;
-		}
+		memset(&inode, 0, sizeof(inode));
+		e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
+				"clear_exclude");
+		ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
 	}
 }
 

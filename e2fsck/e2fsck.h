@@ -231,6 +231,7 @@ struct e2fsck_struct {
 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
 
 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
+	ext2fs_block_bitmap block_excluded_map; /* Blocks which are excluded */
 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
 	ext2fs_block_bitmap block_ea_map; /* Blocks which are used by EA's */
 

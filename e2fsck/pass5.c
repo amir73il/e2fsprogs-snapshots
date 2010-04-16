@@ -14,6 +14,7 @@
 #include "problem.h"
 
 static void check_block_bitmaps(e2fsck_t ctx);
+static void check_exclude_bitmaps(e2fsck_t ctx);
 static void check_inode_bitmaps(e2fsck_t ctx);
 static void check_inode_end(e2fsck_t ctx);
 static void check_block_end(e2fsck_t ctx);
@@ -44,6 +45,9 @@ void e2fsck_pass5(e2fsck_t ctx)
 	check_block_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
+	check_exclude_bitmaps(ctx);
+	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
+		return;
 	check_inode_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
@@ -60,6 +64,9 @@ void e2fsck_pass5(e2fsck_t ctx)
 	ctx->inode_dir_map = 0;
 	ext2fs_free_block_bitmap(ctx->block_found_map);
 	ctx->block_found_map = 0;
+	if (ctx->block_excluded_map)
+		ext2fs_free_block_bitmap(ctx->block_excluded_map);
+	ctx->block_excluded_map = 0;
 
 	print_resource_track(ctx, _("Pass 5"), &rtrack, ctx->fs->io);
 }
@@ -81,6 +88,18 @@ static void print_bitmap_problem(e2fsck_t ctx, int problem,
 			pctx->blk2 = 0;
 		else
 			problem = PR_5_BLOCK_RANGE_USED;
+		break;
+	case PR_5_BLOCK_NOTEXCLUDED:
+		if (pctx->blk == pctx->blk2)
+			pctx->blk2 = 0;
+		else
+			problem = PR_5_BLOCK_RANGE_NOTEXCLUDED;
+		break;
+	case PR_5_BLOCK_EXCLUDED:
+		if (pctx->blk == pctx->blk2)
+			pctx->blk2 = 0;
+		else
+			problem = PR_5_BLOCK_RANGE_EXCLUDED;
 		break;
 	case PR_5_INODE_UNUSED:
 		if (pctx->ino == pctx->ino2)
@@ -326,6 +345,134 @@ redo_counts:
 	}
 errout:
 	ext2fs_free_mem(&free_array);
+}
+
+static void check_exclude_bitmaps(e2fsck_t ctx)
+{
+	ext2_filsys fs = ctx->fs;
+	blk_t	i;
+	int	group = 0;
+	blk_t	blocks = 0;
+	int	actual, bitmap;
+	struct problem_context	pctx;
+	int	problem, save_problem, fixit, had_problem;
+	errcode_t	retval;
+	int		csum_flag;
+	int		skip_group = 0;
+
+	clear_problem_context(&pctx);
+
+	if (!(fs->super->s_feature_compat &
+				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+		return;
+
+	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+redo_counts:
+	had_problem = 0;
+	save_problem = 0;
+	pctx.blk = pctx.blk2 = NO_BLK;
+	if (csum_flag &&
+	    (fs->group_desc[group].bg_flags & EXT2_BG_BLOCK_UNINIT))
+		skip_group++;
+	for (i = fs->super->s_first_data_block;
+	     i < fs->super->s_blocks_count;
+	     i++) {
+		actual = ext2fs_fast_test_block_bitmap(ctx->block_excluded_map, i);
+
+		if (skip_group) {
+			bitmap = 0;
+			actual = (actual != 0);
+		} else
+			bitmap = ext2fs_fast_test_block_bitmap(fs->exclude_map, i);
+
+		if (actual == bitmap)
+			goto do_counts;
+
+		if (!actual && bitmap) {
+			/*
+			 * Block not excluded, but marked in exclude bitmap.
+			 */
+			problem = PR_5_BLOCK_NOTEXCLUDED;
+		} else {
+			/*
+			 * Block excluded, but not marked in exclude bitmap.
+			 */
+			problem = PR_5_BLOCK_EXCLUDED;
+
+			if (skip_group) {
+				struct problem_context pctx2;
+				pctx2.blk = i;
+				pctx2.group = group;
+				if (fix_problem(ctx, PR_5_BLOCK_UNINIT,&pctx2)){
+					fs->group_desc[group].bg_flags &=
+						~EXT2_BG_BLOCK_UNINIT;
+					skip_group = 0;
+				}
+			}
+		}
+		if (pctx.blk == NO_BLK) {
+			pctx.blk = pctx.blk2 = i;
+			save_problem = problem;
+		} else {
+			if ((problem == save_problem) &&
+			    (pctx.blk2 == i-1))
+				pctx.blk2++;
+			else {
+				print_bitmap_problem(ctx, save_problem, &pctx);
+				pctx.blk = pctx.blk2 = i;
+				save_problem = problem;
+			}
+		}
+		ctx->flags |= E2F_FLAG_PROG_SUPPRESS;
+		had_problem++;
+
+	do_counts:
+		blocks ++;
+		if ((blocks == fs->super->s_blocks_per_group) ||
+		    (i == fs->super->s_blocks_count-1)) {
+			group ++;
+			blocks = 0;
+			skip_group = 0;
+			if (ctx->progress)
+				if ((ctx->progress)(ctx, 5, group,
+						    fs->group_desc_count*2))
+					return;
+			if (csum_flag &&
+			    (i != fs->super->s_blocks_count-1) &&
+			    (fs->group_desc[group].bg_flags &
+			     EXT2_BG_BLOCK_UNINIT))
+				skip_group++;
+		}
+	}
+	if (pctx.blk != NO_BLK)
+		print_bitmap_problem(ctx, save_problem, &pctx);
+	if (had_problem)
+		fixit = end_problem_latch(ctx, PR_LATCH_XBITMAP);
+	else
+		fixit = -1;
+	ctx->flags &= ~E2F_FLAG_PROG_SUPPRESS;
+
+	if (fixit == 1) {
+		ext2fs_free_block_bitmap(fs->exclude_map);
+		retval = ext2fs_copy_bitmap(ctx->block_excluded_map,
+						  &fs->exclude_map);
+		if (retval) {
+			clear_problem_context(&pctx);
+			fix_problem(ctx, PR_5_COPY_BBITMAP_ERROR, &pctx);
+			ctx->flags |= E2F_FLAG_ABORT;
+			return;
+		}
+		ext2fs_mark_exclude_dirty(fs);
+		/* clear fix_exclude flag */
+		if (fs->super->s_feature_ro_compat &
+				NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE) {
+			fs->super->s_feature_ro_compat &=
+				~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
+			ext2fs_mark_super_dirty(fs);
+		}
+	} else if (fixit == 0)
+		ext2fs_unmark_valid(fs);
 }
 
 static void check_inode_bitmaps(e2fsck_t ctx)

@@ -342,14 +342,6 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Exclude @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
 
-	/* Exclude bitmap errors */
-	{ PR_0_FIX_EXCLUDE_BITMAP,
-	  N_("Exclude @B has errors and @f has snapshots.\n"
-	     "This version of e2fsck does not support fixing the exclude\n"
-	     "@B when @f has snapshots.  You may wish to\n"
-	     "disable snapshots support and try running e2fsck again.\n"),
-	  PROMPT_ABORT, 0 },
-
 	/* Corrupted snapshot */
 	{ PR_0_FIX_SNAPSHOT,
 	  N_("@f has corrupted snapshots.\n"
