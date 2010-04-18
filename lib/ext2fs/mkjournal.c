@@ -397,7 +397,7 @@ int ext2fs_big_journal_size(__u64 blocks)
 {
 	int mega_blocks = blocks >> 20;
 	if (!mega_blocks)
-		return ext2fs_default_journal_size(blocks);
+		return -1;
 
 	if (mega_blocks < NEXT3_MAX_COW_CREDITS)
 		/* 32K/1M = 1/32 of filesystem size */

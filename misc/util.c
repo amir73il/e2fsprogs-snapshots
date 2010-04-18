@@ -262,8 +262,15 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 	if (fs->super->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
 		/* big journal requested */
 		j_blocks = ext2fs_big_journal_size(fs->super->s_blocks_count);
-		if (j_blocks < NEXT3_MIN_JOURNAL_BLOCKS)
-			fputs(_("\nFilesystem too small for a big journal\n"), stderr);
+		if (j_blocks < NEXT3_MIN_JOURNAL_BLOCKS) {
+			fputs(_("\nFilesystem too small for a big journal.  "),
+					stderr);
+			if (j_blocks < 0) {
+				fputs(_("Aborting.\n"), stderr);
+				exit(1);
+			}
+			fputs(_("Creating a smaller journal.\n"), stderr);
+		}
 	}
 
 	if (size > 0) {
