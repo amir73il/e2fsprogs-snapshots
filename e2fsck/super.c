@@ -439,7 +439,7 @@ void check_exclude_inode(e2fsck_t ctx)
 	ext2_filsys fs = ctx->fs;
 	struct ext2_inode inode;
 	struct problem_context	pctx;
-	int		i, reset;
+	int		i;
 	blk_t		blk;
 	errcode_t	retval;
 
@@ -497,16 +497,10 @@ void check_exclude_inode(e2fsck_t ctx)
 	}	
 
 	/*
-	 * create exclude inode and/or reset exclude bitmap.
-	 * don't reset exclude bitmap when snapshots exist
-	 * or when fsck'ing a snapshot image.
+	 * create exclude inode and/or allocate missing exclude bitmap blocks.
 	 */
-	reset = (!(fs->super->s_feature_ro_compat & 
-				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT) &&
-			!fs->super->s_snapshot_inum &&
-			!fs->super->s_snapshot_list);
 	clear_problem_context(&pctx);
-	pctx.errcode = ext2fs_create_exclude_inode(fs, reset);
+	pctx.errcode = ext2fs_create_exclude_inode(fs, 0);
 	if (pctx.errcode &&
 			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
 		memset(&inode, 0, sizeof(inode));
