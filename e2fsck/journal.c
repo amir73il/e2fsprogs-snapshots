@@ -839,24 +839,15 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
 		/* journal message buffer at journal super block + 1K */
 		char *buf = ((char *) journal->j_superblock) +
 			SUPERBLOCK_OFFSET;
-		unsigned offset = 0;
 		int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
-#define MSGLEN 256
 
-		if (len > 0 && *buf) {
-			/* print messages in buffer */
-			puts("Error messages recorded in journal:");
-			while (offset < len && buf[offset]) {
-				printf(buf+offset);
-				offset += MSGLEN;
-			}
+		if (len >= 2*SUPERBLOCK_OFFSET && *buf) {
 			/* write journal message buffer to super block + 2K */
 			io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
 			retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
 			io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
 			/* clear journal message buffer */
 			memset(buf, 0, len);
-			puts("End of journal message buffer.");
 		}
 
 		ctx->fs->super->s_state |= EXT2_ERROR_FS;
