@@ -113,10 +113,13 @@ static struct field_set_info super_fields[] = {
 	{ "journal_inum", &set_sb.s_journal_inum, 4, parse_uint },
 	{ "journal_dev", &set_sb.s_journal_dev, 4, parse_uint },
 	{ "last_orphan", &set_sb.s_last_orphan, 4, parse_uint },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	{ "snapshot_inum", &set_sb.s_snapshot_inum, 4, parse_uint },
 	{ "snapshot_id", &set_sb.s_snapshot_id, 4, parse_uint },
-	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count, 4, parse_uint },
+	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count,
+		4, parse_uint },
 	{ "snapshot_list", &set_sb.s_snapshot_list, 4, parse_uint },
+#endif
 	{ "hash_seed", &set_sb.s_hash_seed, 16, parse_uuid },
 	{ "def_hash_version", &set_sb.s_def_hash_version, 1, parse_hashalg },
 	{ "jnl_backup_type", &set_sb.s_jnl_backup_type, 1, parse_uint },
@@ -186,8 +189,12 @@ static struct field_set_info ext2_bg_fields[] = {
 	{ "free_inodes_count", &set_gd.bg_free_inodes_count, 2, parse_uint },
 	{ "used_dirs_count", &set_gd.bg_used_dirs_count, 2, parse_uint },
 	{ "flags", &set_gd.bg_flags, 2, parse_uint },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap, 4, parse_uint },
 	{ "cow_bitmap", &set_gd.bg_cow_bitmap, 4, parse_uint },
+#else
+	{ "reserved", &set_gd.bg_reserved, 2, parse_uint, FLAG_ARRAY, 2 },
+#endif
 	{ "itable_unused", &set_gd.bg_itable_unused, 2, parse_uint },
 	{ "checksum", &set_gd.bg_checksum, 2, parse_gd_csum },
 	{ 0, 0, 0, 0 }

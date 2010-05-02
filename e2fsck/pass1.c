@@ -24,7 +24,6 @@
  * 	- A bitmap of which inodes are in bad blocks.	(inode_bb_map)
  * 	- A bitmap of which inodes are imagic inodes.	(inode_imagic_map)
  * 	- A bitmap of which blocks are in use.		(block_found_map)
- * 	- A bitmap of which blocks are excluded.	(block_excluded_map)
  * 	- A bitmap of which blocks are in use by two inodes	(block_dup_map)
  * 	- The data blocks of the directory inodes.	(dir_map)
  *
@@ -80,7 +79,11 @@ static void adjust_extattr_refcount(e2fsck_t ctx, ext2_refcount_t refcount,
 struct process_block_struct {
 	ext2_ino_t	ino;
 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 			fragmented:1, compressed:1, bbcheck:1, excluded:1;
+#else
+				fragmented:1, compressed:1, bbcheck:1;
+#endif
 	blk_t		num_blocks;
 	blk_t		max_blocks;
 	e2_blkcnt_t	last_block;
@@ -582,6 +585,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags |= E2F_FLAG_ABORT;
 		return;
 	}
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (sb->s_feature_compat & NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
 		pctx.errcode = ext2fs_allocate_block_bitmap(fs,
 				_("excluded block map"),
@@ -592,6 +596,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags |= E2F_FLAG_ABORT;
 		return;
 	}
+#endif
 	e2fsck_setup_tdb_icount(ctx, 0, &ctx->inode_link_info);
 	if (!ctx->inode_link_info)
 		pctx.errcode = ext2fs_create_icount2(fs, 0, 0, 0,
@@ -856,7 +861,11 @@ void e2fsck_pass1(e2fsck_t ctx)
 			if (ino == EXT2_BOOT_LOADER_INO) {
 				if (LINUX_S_ISDIR(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 			} else if (ino == EXT2_RESIZE_INO || ino == EXT2_EXCLUDE_INO) {
+#else
+			} else if (ino == EXT2_RESIZE_INO) {
+#endif
 				if (inode->i_mode &&
 				    !LINUX_S_ISREG(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
@@ -1105,6 +1114,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
 	}
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 	if (ctx->flags & E2F_FLAG_EXCLUDE_INODE) {
 		ext2fs_block_bitmap save_bmap;
 
@@ -1121,9 +1131,10 @@ void e2fsck_pass1(e2fsck_t ctx)
 			ctx->flags |= E2F_FLAG_RESTART;
 		}
 		fs->block_map = save_bmap;
-		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
+		ctx->flags &= ~E2F_FLAG_EXCLUDE_INODE;
 	}
 
+#endif
 	if (ctx->flags & E2F_FLAG_RESTART) {
 		/*
 		 * Only the master copy of the superblock and block
@@ -1628,8 +1639,10 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 			struct ext2_inode *inode, int restart_flag,
 			const char *source)
 {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	/* don't clear inode with blocks when preening volume with active snapshot */
-	if ((ctx->fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+	if ((ctx->fs->super->s_feature_ro_compat &
+				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 ctx->fs->super->s_snapshot_inum) {
 		int i;
 		for (i = 0; i < EXT2_N_BLOCKS; i++)
@@ -1638,6 +1651,7 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 				preenhalt(ctx);
 	}
 
+#endif
 	inode->i_flags = 0;
 	inode->i_links_count = 0;
 	ext2fs_icount_store(ctx->inode_link_info, ino, 0);
@@ -1858,11 +1872,13 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	pb.previous_block = 0;
 	pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
 	pb.is_reg = LINUX_S_ISREG(inode->i_mode);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* mark snapshot file blocks excluded */
 	pb.excluded = (pb.is_reg &&
 			(inode->i_flags & NEXT3_SNAPFILE_FL) &&
 			(fs->super->s_feature_compat &
 			 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE));
+#endif
 	pb.max_blocks = 1 << (31 - fs->super->s_log_block_size);
 	pb.inode = inode;
 	pb.pctx = pctx;
@@ -2234,8 +2250,10 @@ static int process_block(ext2_filsys fs,
 			mark_block_used(ctx, blk);
 	} else
 		mark_block_used(ctx, blk);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (p->excluded && ctx->block_excluded_map)
 		ext2fs_fast_mark_block_bitmap(ctx->block_excluded_map, blk);
+#endif
 	p->num_blocks++;
 	if (blockcnt >= 0)
 		p->last_block = blockcnt;

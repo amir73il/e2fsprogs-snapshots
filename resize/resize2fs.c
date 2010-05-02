@@ -48,7 +48,9 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
 static errcode_t inode_ref_fix(ext2_resize_t rfs);
 static errcode_t move_itables(ext2_resize_t rfs);
 static errcode_t fix_resize_inode(ext2_filsys fs);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 static errcode_t fix_exclude_inode(ext2_filsys fs);
+#endif
 static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
 static errcode_t fix_sb_journal_backup(ext2_filsys fs);
 
@@ -154,10 +156,12 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
 	if (retval)
 		goto errout;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 	retval = fix_exclude_inode(rfs->new_fs);
 	if (retval)
 		goto errout;
 
+#endif
 	retval = fix_sb_journal_backup(rfs->new_fs);
 	if (retval)
 		goto errout;
@@ -1774,6 +1778,7 @@ errout:
 	return retval;
 }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Fix the exclude inode
  */
@@ -1793,6 +1798,7 @@ static errcode_t fix_exclude_inode(ext2_filsys fs)
 	return ext2fs_create_exclude_inode(fs, 1);
 }
 
+#endif
 /*
  * Finally, recalculate the summary information
  */

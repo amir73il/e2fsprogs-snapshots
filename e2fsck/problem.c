@@ -332,6 +332,7 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Resize @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 	/* Exclude not enabled, but exclude inode is non-zero */
 	{ PR_0_CLEAR_EXCLUDE_INODE,
 	  N_("Exclude_@i not enabled, but the exclude @i is non-zero.  "),
@@ -342,6 +343,8 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Exclude @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
 
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	/* Corrupted snapshot */
 	{ PR_0_FIX_SNAPSHOT,
 	  N_("@f has corrupted snapshots.\n"
@@ -349,6 +352,7 @@ static struct e2fsck_problem problem_table[] = {
 	     "You may wish to discard snapshots and run e2fsck again.\n"),
 	  PROMPT_ABORT, 0 },
 
+#endif
 	/* Last mount time is in the future */
 	{ PR_0_FUTURE_SB_LAST_MOUNT,
 	  N_("@S last mount time (%t,\n\tnow = %T) is in the future.\n"),
@@ -817,11 +821,13 @@ static struct e2fsck_problem problem_table[] = {
 	  N_("Resize @i (re)creation failed: %m."),
 	  PROMPT_ABORT, 0 },
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 	/* Exclude inode failed */
 	{ PR_1_EXCLUDE_INODE_CREATE,
 	  N_("Exclude @i (re)creation failed: %m."),
 	  PROMPT_CLEAR, 0 },
 
+#endif
 	/* invalid inode->i_extra_isize */
 	{ PR_1_EXTRA_ISIZE,
 	  N_("@i %i has a extra size (%IS) which is @n\n"),
@@ -1550,6 +1556,7 @@ static struct e2fsck_problem problem_table[] = {
 	  "\n",
 	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* Exclude bitmap differences header */
 	{ PR_5_EXCLUDE_BITMAP_HEADER,
 	  N_("Exclude @B differences: "),
@@ -1570,6 +1577,7 @@ static struct e2fsck_problem problem_table[] = {
 	  "\n",
 	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#endif
 	/* Inode bitmap differences header */
 	{ PR_5_INODE_BITMAP_HEADER,
 	  N_("@i @B differences: "),
@@ -1646,6 +1654,7 @@ static struct e2fsck_problem problem_table[] = {
 	  " +(%b--%c)",
 	  PROMPT_NONE, PR_LATCH_BBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* Block range not excluded, but marked in exclude bitmap */
 	{ PR_5_BLOCK_RANGE_NOTEXCLUDED,
 	  " -(%b--%c)",
@@ -1656,6 +1665,7 @@ static struct e2fsck_problem problem_table[] = {
 	  " +(%b--%c)",
 	  PROMPT_NONE, PR_LATCH_XBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#endif
 	/* Inode range not used, but marked in bitmap */
 	{ PR_5_INODE_RANGE_UNUSED,
 	  " -(%i--%j)",
@@ -1697,7 +1707,9 @@ static struct latch_descr pr_latch_info[] = {
 	{ PR_LATCH_BBLOCK, PR_1_INODE_BBLOCK_LATCH, 0 },
 	{ PR_LATCH_IBITMAP, PR_5_INODE_BITMAP_HEADER, PR_5_INODE_BITMAP_END },
 	{ PR_LATCH_BBITMAP, PR_5_BLOCK_BITMAP_HEADER, PR_5_BLOCK_BITMAP_END },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	{ PR_LATCH_XBITMAP, PR_5_EXCLUDE_BITMAP_HEADER, PR_5_EXCLUDE_BITMAP_END },
+#endif
 	{ PR_LATCH_RELOC, PR_0_RELOCATE_HINT, 0 },
 	{ PR_LATCH_DBLOCK, PR_1B_DUP_BLOCK_HEADER, PR_1B_DUP_BLOCK_END },
 	{ PR_LATCH_LOW_DTIME, PR_1_ORPHAN_LIST_REFUGEES, 0 },

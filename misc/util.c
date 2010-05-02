@@ -259,6 +259,7 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 		return 0;
 	}
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 	if (fs->super->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
 		/* big journal requested */
 		j_blocks = ext2fs_big_journal_size(fs->super->s_blocks_count);
@@ -273,6 +274,7 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 		}
 	}
 
+#endif
 	if (size > 0) {
 		j_blocks = size * 1024 / (fs->blocksize	/ 1024);
 		if (j_blocks < 1024 || j_blocks > 10240000) {
@@ -289,7 +291,6 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 			exit(1);
 		}
 	}
-
 	return j_blocks;
 }
 

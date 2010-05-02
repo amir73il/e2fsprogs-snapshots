@@ -29,8 +29,10 @@ static struct feature feature_list[] = {
 			"dir_prealloc" },
 	{	E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL,
 			"has_journal" },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	{	E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL,
 			"big_journal" },
+#endif
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_IMAGIC_INODES,
 			"imagic_inodes" },
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXT_ATTR,
@@ -39,8 +41,10 @@ static struct feature feature_list[] = {
 			"dir_index" },
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_RESIZE_INODE,
 			"resize_inode" },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	{	E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE,
 			"exclude_inode" },
+#endif
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_LAZY_BG,
 			"lazy_bg" },
 
@@ -48,6 +52,7 @@ static struct feature feature_list[] = {
 			"sparse_super" },
 	{	E2P_FEATURE_RO_INCOMPAT, EXT2_FEATURE_RO_COMPAT_LARGE_FILE,
 			"large_file" },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	{	E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
 			"has_snapshot" },
 	{	E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT,
@@ -56,6 +61,7 @@ static struct feature feature_list[] = {
 			"fix_snapshot" },
 	{	E2P_FEATURE_RO_INCOMPAT, NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE,
 			"fix_exclude" },
+#endif
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HUGE_FILE,
 			"huge_file" },
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_GDT_CSUM,

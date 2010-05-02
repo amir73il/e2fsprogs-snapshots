@@ -207,6 +207,7 @@ static void list_desc (ext2_filsys fs)
 		diff = fs->group_desc[i].bg_inode_bitmap - first_block;
 		if (diff >= 0)
 			printf(" (+%ld)", diff);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		if (fs->group_desc[i].bg_exclude_bitmap) {
 			fputs(_(", Exclude bitmap at "), stdout);
 			print_number(fs->group_desc[i].bg_exclude_bitmap);
@@ -221,6 +222,7 @@ static void list_desc (ext2_filsys fs)
 			if (diff >= 0 && diff <= fs->super->s_blocks_per_group)
 				printf(" (+%ld)", diff);
 		}
+#endif
 		fputs(_("\n  Inode table at "), stdout);
 		print_range(fs->group_desc[i].bg_inode_table,
 			    fs->group_desc[i].bg_inode_table +

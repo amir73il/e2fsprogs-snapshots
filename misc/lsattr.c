@@ -70,7 +70,11 @@ static int generation_opt;
 
 static void usage(void)
 {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	fprintf(stderr, _("Usage: %s [-XRVadlv] [files...]\n"), program_name);
+#else
+	fprintf(stderr, _("Usage: %s [-RVadlv] [files...]\n"), program_name);
+#endif
 	exit(1);
 }
 
@@ -169,12 +173,18 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	while ((c = getopt (argc, argv, "XRVadlv")) != EOF)
+#else
+	while ((c = getopt (argc, argv, "RVadlv")) != EOF)
+#endif
 		switch (c)
 		{
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 			case 'X':
 				pf_options |= PFOPT_SNAPSHOT;
 				break;
+#endif
 			case 'R':
 				recursive = 1;
 				break;
@@ -188,7 +198,11 @@ int main (int argc, char ** argv)
 				dirs_opt = 1;
 				break;
 			case 'l':
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 				pf_options |= PFOPT_LONG;
+#else
+				pf_options = PFOPT_LONG;
+#endif
 				break;
 			case 'v':
 				generation_opt = 1;

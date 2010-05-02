@@ -81,12 +81,18 @@ static unsigned long sf;
 
 static void usage(void)
 {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	fprintf(stderr,
 		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
 		program_name);
 	fprintf(stderr,
 		_("Usage: %s -X [-+=Snapshot] files...\n"),
 		program_name);
+#else
+	fprintf(stderr,
+		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
+		program_name);
+#endif
 	exit(1);
 }
 
@@ -95,6 +101,7 @@ struct flags_char {
 	char 		optchar;
 };
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 static const struct flags_char ext2_flags_array[] = {
 	{ EXT2_NOATIME_FL, 'A' },
 	{ EXT2_SYNC_FL, 'S' },
@@ -126,6 +133,24 @@ static struct flags_char snapshot_flags_array[] = {
 	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
 	{ 0, 0 }
 };
+#else
+static const struct flags_char flags_array[] = {
+	{ EXT2_NOATIME_FL, 'A' },
+	{ EXT2_SYNC_FL, 'S' },
+	{ EXT2_DIRSYNC_FL, 'D' },
+	{ EXT2_APPEND_FL, 'a' },
+	{ EXT2_COMPR_FL, 'c' },
+	{ EXT2_NODUMP_FL, 'd' },
+	{ EXT4_EXTENTS_FL, 'e'},
+	{ EXT2_IMMUTABLE_FL, 'i' },
+	{ EXT3_JOURNAL_DATA_FL, 'j' },
+	{ EXT2_SECRM_FL, 's' },
+	{ EXT2_UNRM_FL, 'u' },
+	{ EXT2_NOTAIL_FL, 't' },
+	{ EXT2_TOPDIR_FL, 'T' },
+	{ 0, 0 }
+};
+#endif
 
 static unsigned long get_flag(char c)
 {
@@ -149,10 +174,12 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 			if (*p == 'X') {
 				flags_array = snapshot_flags_array;
 				continue;
 			}
+#endif
 			if (*p == 'R') {
 				recursive = 1;
 				continue;

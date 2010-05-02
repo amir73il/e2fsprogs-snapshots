@@ -229,11 +229,14 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
-	/* never release orphan inodes when scanning volume with active snapshot */
-	if ((fs->super->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+	/* never release orphans when scanning volume with active snapshot */
+	if ((fs->super->s_feature_ro_compat &
+				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 fs->super->s_snapshot_inum)
 		return 0;
 
+#endif
 	if ((ino = fs->super->s_last_orphan) == 0)
 		return 0;
 
@@ -428,6 +431,7 @@ cleanup:
 
  }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Check the exclude inode to make sure it is sane.  We check both for
  * the case where exclude bitmap is not enabled (in which case the
@@ -510,8 +514,10 @@ void check_exclude_inode(e2fsck_t ctx)
 	}
 }
 
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 /*
- * This function checks the corrupted snapshot flag
+ * This function checks if the file system has snapshots
  */
 void check_snapshots(e2fsck_t ctx)
 {
@@ -554,6 +560,7 @@ void check_snapshots(e2fsck_t ctx)
 	}
 }
 
+#endif
 /*
  * This function checks the dirhash signed/unsigned hint if necessary.
  */
@@ -581,6 +588,7 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
 	}
 }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
 /*
  * This function prints the message buffer at the end of super block.
  */
@@ -617,6 +625,8 @@ out:
 	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
 	ext2fs_free_mem(&buf);
 }
+
+#endif
 
 void check_super_block(e2fsck_t ctx)
 {
@@ -1022,11 +1032,13 @@ void check_super_block(e2fsck_t ctx)
 	 */
 	e2fsck_fix_dirhash_hint(ctx);
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
 	/*
 	 * Print message buffer if necessary
 	 */
 	e2fsck_print_message_buffer(ctx);
 
+#endif
 	return;
 }
 

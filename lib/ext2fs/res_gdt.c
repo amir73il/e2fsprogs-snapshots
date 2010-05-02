@@ -217,6 +217,7 @@ out_free:
 	return retval;
 }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * ext2fs_create_exclude_inode():
  * the exclude inode owns all the exclude bitmap blocks (one per block group)
@@ -289,6 +290,8 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	max_groups = fs->desc_blocks + sb->s_reserved_gdt_blocks;
 	max_groups *= EXT2_DESC_PER_BLOCK(sb);
 	for (grp = 0; grp < max_groups; grp++) {
+		struct ext2_group_desc *gd = fs->group_desc+grp;
+
 		dindir_off = grp/apb;
 		indir_off = grp%apb;
 		if (indir_off == 0) {
@@ -320,52 +323,55 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 			}
 		}
 		
-		if (grp < fs->group_desc_count) {
-			struct ext2_group_desc *gd = fs->group_desc+grp;
-			/* read/alloc exclude bitmap block */
-			data_blk = indir_buf[indir_off];
-			if (!data_blk) {
-				/* allocate exclude bitmap block */
-				retval = ext2fs_alloc_block(fs, gd->bg_block_bitmap, (char *)data_buf, &data_blk);
+		if (grp >= fs->group_desc_count)
+			continue;
+		/* read/alloc exclude bitmap block */
+		data_blk = indir_buf[indir_off];
+		if (!data_blk) {
+			/* allocate exclude bitmap block */
+			retval = ext2fs_alloc_block(fs, gd->bg_block_bitmap,
+					(char *)data_buf, &data_blk);
+			if (retval)
+				goto out_dindir;
+			indir_buf[indir_off] = data_blk;
+			ext2fs_iblk_add_blocks(fs, &inode, 1);
+#ifdef EXCLUDE_INO_DEBUG
+			printf("allocated exclude bitmap block %u\n", data_blk);
+#endif
+			indir_dirty = inode_dirty = 1;
+		} else if (reset) {
+			/* reset exclude bitmap block */
+#ifdef EXCLUDE_INO_DEBUG
+			printf("reading exclude bitmap block %u\n", data_blk);
+#endif
+			retval = io_channel_read_blk(fs->io, data_blk, 1,
+					data_buf);
+			if (retval)
+				goto out_dindir;
+			/* zero data block */
+			for (i = 0; i < apb; i++) {
+				if (!data_buf[i])
+					continue;
+				data_buf[i] = 0;
+				data_dirty = 1;
+			}
+			if (data_dirty) {
+				retval = io_channel_write_blk(fs->io, data_blk,
+						1, data_buf);
 				if (retval)
 					goto out_dindir;
-				indir_buf[indir_off] = data_blk;
-				ext2fs_iblk_add_blocks(fs, &inode, 1);
-#ifdef EXCLUDE_INO_DEBUG
-				printf("allocated exclude bitmap block %u\n", data_blk);
-#endif
-				indir_dirty = inode_dirty = 1;
-			} else if (reset) {
-				/* reset exclude bitmap block */
-#ifdef EXCLUDE_INO_DEBUG
-				printf("reading exclude bitmap block %u\n", data_blk);
-#endif
-				retval = io_channel_read_blk(fs->io, data_blk, 1, data_buf);
-				if (retval)
-					goto out_dindir;
-				/* zero data block */
-				for (i = 0; i < apb; i++) {
-					if (!data_buf[i])
-						continue;
-					data_buf[i] = 0;
-					data_dirty = 1;
-				}
-				if (data_dirty) {
-					retval = io_channel_write_blk(fs->io, data_blk, 1, data_buf);
-					if (retval)
-						goto out_dindir;
-					data_dirty = 0;
-				}
+				data_dirty = 0;
 			}
-			/* store exclude bitmap block in group descriptor */
-			if (gd->bg_exclude_bitmap != data_blk) {
-				gd->bg_exclude_bitmap = data_blk;
-				gdt_dirty = 1;
-			}
-#ifdef EXCLUDE_INO_PROGRESS
-			printf("\b\b\b\b\b\b\b\b\b\b\b%5d/%5d", grp, fs->group_desc_count);
-#endif
 		}
+		/* store exclude bitmap block in group descriptor */
+		if (gd->bg_exclude_bitmap != data_blk) {
+			gd->bg_exclude_bitmap = data_blk;
+			gdt_dirty = 1;
+		}
+#ifdef EXCLUDE_INO_PROGRESS
+		printf("\b\b\b\b\b\b\b\b\b\b\b%5d/%5d", grp,
+				fs->group_desc_count);
+#endif
 	}
 #ifdef EXCLUDE_INO_PROGRESS
 	printf("\b\b\b\b\b\b\b\b\b\b\bdone       \n");
@@ -411,4 +417,4 @@ out_free:
 	return retval;
 }
 
-
+#endif

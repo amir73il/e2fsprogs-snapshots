@@ -60,10 +60,12 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
 	sb->s_journal_inum = ext2fs_swab32(sb->s_journal_inum);
 	sb->s_journal_dev = ext2fs_swab32(sb->s_journal_dev);
 	sb->s_last_orphan = ext2fs_swab32(sb->s_last_orphan);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	sb->s_snapshot_inum = ext2fs_swab32(sb->s_snapshot_inum);
 	sb->s_snapshot_id = ext2fs_swab32(sb->s_snapshot_id);
 	sb->s_snapshot_r_blocks_count = ext2fs_swab32(sb->s_snapshot_r_blocks_count);
 	sb->s_snapshot_list = ext2fs_swab32(sb->s_snapshot_list);
+#endif
 	sb->s_desc_size = ext2fs_swab16(sb->s_desc_size);
 	sb->s_default_mount_opts = ext2fs_swab32(sb->s_default_mount_opts);
 	sb->s_first_meta_bg = ext2fs_swab32(sb->s_first_meta_bg);
@@ -91,8 +93,10 @@ void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
 	gdp->bg_free_inodes_count = ext2fs_swab16(gdp->bg_free_inodes_count);
 	gdp->bg_used_dirs_count = ext2fs_swab16(gdp->bg_used_dirs_count);
 	gdp->bg_flags = ext2fs_swab16(gdp->bg_flags);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	gdp->bg_exclude_bitmap = ext2fs_swab32(gdp->bg_exclude_bitmap);
 	gdp->bg_cow_bitmap = ext2fs_swab32(gdp->bg_cow_bitmap);
+#endif
 	gdp->bg_itable_unused = ext2fs_swab16(gdp->bg_itable_unused);
 	gdp->bg_checksum = ext2fs_swab16(gdp->bg_checksum);
 }

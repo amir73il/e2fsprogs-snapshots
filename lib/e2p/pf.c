@@ -46,10 +46,13 @@ static struct flags_name flags_array[] = {
 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
 	{ EXT4_EXTENTS_FL, "e", "Extents" },
 	{ EXT4_HUGE_FILE_FL, "h", "Huge_file" },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	{ NEXT3_SNAPFILE_FL, "x", "Snapshot_File" },
+#endif
 	{ 0, NULL, NULL }
 };
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 static struct flags_name snapshot_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },
 	{ NEXT3_SNAPFILE_ENABLED_FL, "n", "eNabled" },
@@ -62,14 +65,22 @@ static struct flags_name snapshot_flags_array[] = {
 	{ 0, NULL, NULL }
 };
 
+#endif
 void print_flags (FILE * f, unsigned long flags, unsigned options)
 {
-	struct flags_name *array = ((options & PFOPT_SNAPSHOT) ? snapshot_flags_array : flags_array);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+	struct flags_name *array = ((options & PFOPT_SNAPSHOT) ?
+			snapshot_flags_array : flags_array);
+#endif
 	int long_opt = (options & PFOPT_LONG);
 	struct flags_name *fp;
 	int	first = 1;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	for (fp = array; fp->flag != 0; fp++) {
+#else
+	for (fp = flags_array; fp->flag != 0; fp++) {
+#endif
 		if (flags & fp->flag) {
 			if (long_opt) {
 				if (first)

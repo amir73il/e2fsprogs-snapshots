@@ -836,6 +836,7 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
 
 
 	if (journal->j_superblock->s_errno) {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
 		/* journal message buffer at journal super block + 1K */
 		char *buf = ((char *) journal->j_superblock) +
 			SUPERBLOCK_OFFSET;
@@ -850,6 +851,7 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
 			memset(buf, 0, len);
 		}
 
+#endif
 		ctx->fs->super->s_state |= EXT2_ERROR_FS;
 		ext2fs_mark_super_dirty(ctx->fs);
 		journal->j_superblock->s_errno = 0;

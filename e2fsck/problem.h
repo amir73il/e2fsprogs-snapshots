@@ -39,7 +39,9 @@ struct problem_context {
 #define PR_LATCH_TOOBIG	0x0080	/* Latch for file to big errors */
 #define PR_LATCH_OPTIMIZE_DIR 0x0090 /* Latch for optimize directories */
 #define PR_LATCH_BG_CHECKSUM 0x00A0  /* Latch for block group checksums */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 #define PR_LATCH_XBITMAP 0x00B0 /* Latch for pass 5 exclude bitmap proc. */
+#endif
 
 #define PR_LATCH(x)	((((x) & PR_LATCH_MASK) >> 4) - 1)
 
@@ -228,15 +230,19 @@ struct problem_context {
 /* Block group checksum (latch question) */
 #define PR_0_GDT_CSUM_LATCH			0x00003E
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /* Exclude_inode not enabled, but exclude inode is non-zero */
 #define PR_0_CLEAR_EXCLUDE_INODE		0x000100
 
 /* Exclude inode invalid */
 #define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 /* Corrupted snapshot */
 #define PR_0_FIX_SNAPSHOT			0x000103
 
+#endif
 
 /*
  * Pass 1 errors
@@ -527,9 +533,11 @@ struct problem_context {
 /* Extent node header invalid */
 #define PR_1_EXTENT_HEADER_INVALID	0x01005F
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /* Exclude inode failed */
 #define PR_1_EXCLUDE_INODE_CREATE	0x010100
 
+#endif
 /*
  * Pass 1b errors
  */
@@ -993,6 +1001,7 @@ struct problem_context {
 /* Inode in use but group is marked INODE_UNINIT */
 #define PR_5_INODE_UNINIT		0x050019
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 /* Exclude bitmap differences header */
 #define PR_5_EXCLUDE_BITMAP_HEADER	0x050100
 
@@ -1011,6 +1020,7 @@ struct problem_context {
 /* Exclude bitmap differences end */
 #define PR_5_EXCLUDE_BITMAP_END		0x050105
 
+#endif
 /*
  * Post-Pass 5 errors
  */

@@ -50,8 +50,9 @@
 #define EXT2_UNDEL_DIR_INO	 6	/* Undelete directory inode */
 #define EXT2_RESIZE_INO		 7	/* Reserved group descriptors inode */
 #define EXT2_JOURNAL_INO	 8	/* Journal inode */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 #define EXT2_EXCLUDE_INO	10	/* Snapshot exclude inode */
-
+#endif
 
 /* First non-reserved inode for old ext2 filesystems */
 #define EXT2_GOOD_OLD_FIRST_INO	11
@@ -146,8 +147,12 @@ struct ext2_group_desc
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
 	__u16	bg_flags;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
 	__u32	bg_cow_bitmap;		/* COW bitmap block of last snapshot */
+#else
+	__u32	bg_reserved[2];
+#endif
 	__u16	bg_itable_unused;	/* Unused inodes count */
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
@@ -276,12 +281,14 @@ struct ext2_dx_countlimit {
 #define EXT2_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
 #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
 #define EXT4_EXTENTS_FL 		0x00080000 /* Inode uses extents */
-/* snapshot non-persistent flags */
+#define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+/* snapshot non-persistent status flags - overlaps ext4 flags */
 #define NEXT3_SNAPFILE_LIST_FL		0x00100000 /* snapshot is on list */
 #define NEXT3_SNAPFILE_ACTIVE_FL	0x00200000 /* snapshot is active */
 #define NEXT3_SNAPFILE_OPEN_FL		0x00400000 /* snapshot is mounted */
 #define NEXT3_SNAPFILE_INUSE_FL		0x00800000 /* snapshot is in-use */
-/* end of snapshot non-persistent flags */
+/* end of snapshot non-persistent status flags */
 /* snapshot persistent flags */
 #define NEXT3_SNAPFILE_FL		0x01000000 /* snapshot file */
 #define NEXT3_SNAPFILE_ENABLED_FL	0x02000000 /* snapshot is enabled */
@@ -289,10 +296,11 @@ struct ext2_dx_countlimit {
 #define NEXT3_SNAPFILE_SHRUNK_FL	0x08000000 /* snapshot is shrunk */
 #define NEXT3_SNAPFILE_TAGGED_FL	0x10000000 /* snapshot is tagged */
 /* end of snapshot persistent flags */
+#endif
 #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
 
-#define EXT2_FL_USER_VISIBLE		0x1FFBDFFF /* User visible flags */
-#define EXT2_FL_USER_MODIFIABLE		0x131080FF /* User modifiable flags */
+#define EXT2_FL_USER_VISIBLE		0x004BDFFF /* User visible flags */
+#define EXT2_FL_USER_MODIFIABLE		0x004B80FF /* User modifiable flags */
 
 /*
  * ioctl commands
@@ -438,14 +446,22 @@ struct ext2_inode_large {
 #define i_size_high	i_dir_acl
 
 #if defined(__KERNEL__) || defined(__linux__)
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#define i_next_snapshot	osd1.linux1.l_i_version
+#else
+#define i_reserved1	osd1.linux1.l_i_reserved1
+#endif
 #define i_frag		osd2.linux2.l_i_frag
 #define i_fsize		osd2.linux2.l_i_fsize
 #define i_uid_low	i_uid
 #define i_gid_low	i_gid
 #define i_uid_high	osd2.linux2.l_i_uid_high
 #define i_gid_high	osd2.linux2.l_i_gid_high
-#define i_next_snapshot	osd1.linux1.l_i_version
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 #define i_snapshot_blocks	osd2.linux2.l_i_reserved2
+#else
+#define i_reserved2	osd2.linux2.l_i_reserved2
+#endif
 #else
 #if defined(__GNU__)
 
@@ -596,6 +612,7 @@ struct ext2_super_block {
 	__u8    s_reserved_char_pad;
 	__u16	s_reserved_pad;		/* Padding to next 32bits */
 	__u64	s_kbytes_written;	/* nr of lifetime kilobytes written */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	__u32   s_reserved[156];        /* Padding to the end of the block */
  	/*
  	 * Snapshots support valid if NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT is set.
@@ -604,6 +621,9 @@ struct ext2_super_block {
 	__u32	s_snapshot_r_blocks_count; /* Reserved for active snapshot */
 	__u32	s_snapshot_id;		/* Sequential ID of active snapshot */
 	__u32	s_snapshot_inum;	/* Inode number of active snapshot */
+#else
+	__u32   s_reserved[160];        /* Padding to the end of the block */
+#endif
 };
 
 /*
@@ -631,6 +651,7 @@ struct ext2_super_block {
  */
 #define EXT3_JNL_BACKUP_BLOCKS	1
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 /*
  * 'big journal' needs to accomodate extra snapshot COW credits
  * default size accomodates maximum possible COW credits
@@ -642,6 +663,7 @@ struct ext2_super_block {
 #define NEXT3_MIN_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_AVG_COW_CREDITS)
 #define NEXT3_DEF_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_MAX_COW_CREDITS)
 
+#endif
 /*
  * Feature set definitions
  */
@@ -660,8 +682,10 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_RESIZE_INODE	0x0010
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
-#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL	0x1000 /* Snapshots - big journal */
-#define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE	0x2000 /* Snapshots - exclude inode */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL	0x1000 /* Has big journal */
+#define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE	0x2000 /* Has exclude inode */
+#endif
 
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
@@ -670,10 +694,12 @@ struct ext2_super_block {
 #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
 #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
 #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
-#define NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x1000 /* Next3 with snapshots */
-#define NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT	0x2000 /* Next3 snapshot image */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#define NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x1000 /* Next3 has snapshots */
+#define NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT	0x2000 /* Is a snapshot image */
 #define NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT	0x4000 /* Corrupted snapshot */
 #define NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE	0x8000 /* Bad exclude bitmap */
+#endif
 
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
@@ -688,6 +714,7 @@ struct ext2_super_block {
 
 #define EXT2_FEATURE_COMPAT_SUPP	0
 #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
 					 NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
@@ -696,6 +723,12 @@ struct ext2_super_block {
 					 NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE|\
 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+#else
+#define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)
+#endif
 
 /*
  * Default values for user and/or group using reserved blocks

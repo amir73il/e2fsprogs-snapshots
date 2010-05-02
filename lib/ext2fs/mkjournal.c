@@ -388,6 +388,7 @@ int ext2fs_default_journal_size(__u64 blocks)
 	return 32768;
 }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 /* 
  * Big journal is up to 24 times bigger than the default journal
  * to accomodate snapshot COW credits in transactions.
@@ -408,8 +409,8 @@ int ext2fs_big_journal_size(__u64 blocks)
 }
 
 /*
- * Find the number of blocks in the journal inode, write it in super
- * and set the file system 'big_journal' feature accordingy
+ * Find the number of blocks in the journal inode
+ * and adjust the file system 'big_journal' feature accordingy
  */
 int ext2fs_check_journal_size(ext2_filsys fs)
 {
@@ -436,6 +437,7 @@ int ext2fs_check_journal_size(ext2_filsys fs)
 	return j_blocks;
 }
 
+#endif
 /*
  * This function adds a journal device to a filesystem
  */
@@ -576,7 +578,9 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
 	       sizeof(fs->super->s_journal_uuid));
 	fs->super->s_feature_compat |= EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 	ext2fs_check_journal_size(fs);
+#endif
 	ext2fs_mark_super_dirty(fs);
 	return 0;
 errout:

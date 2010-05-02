@@ -14,7 +14,9 @@
 #include "problem.h"
 
 static void check_block_bitmaps(e2fsck_t ctx);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 static void check_exclude_bitmaps(e2fsck_t ctx);
+#endif
 static void check_inode_bitmaps(e2fsck_t ctx);
 static void check_inode_end(e2fsck_t ctx);
 static void check_block_end(e2fsck_t ctx);
@@ -45,9 +47,11 @@ void e2fsck_pass5(e2fsck_t ctx)
 	check_block_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	check_exclude_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
+#endif
 	check_inode_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
@@ -64,9 +68,11 @@ void e2fsck_pass5(e2fsck_t ctx)
 	ctx->inode_dir_map = 0;
 	ext2fs_free_block_bitmap(ctx->block_found_map);
 	ctx->block_found_map = 0;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (ctx->block_excluded_map)
 		ext2fs_free_block_bitmap(ctx->block_excluded_map);
 	ctx->block_excluded_map = 0;
+#endif
 
 	print_resource_track(ctx, _("Pass 5"), &rtrack, ctx->fs->io);
 }
@@ -89,6 +95,7 @@ static void print_bitmap_problem(e2fsck_t ctx, int problem,
 		else
 			problem = PR_5_BLOCK_RANGE_USED;
 		break;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	case PR_5_BLOCK_NOTEXCLUDED:
 		if (pctx->blk == pctx->blk2)
 			pctx->blk2 = 0;
@@ -101,6 +108,7 @@ static void print_bitmap_problem(e2fsck_t ctx, int problem,
 		else
 			problem = PR_5_BLOCK_RANGE_EXCLUDED;
 		break;
+#endif
 	case PR_5_INODE_UNUSED:
 		if (pctx->ino == pctx->ino2)
 			pctx->ino2 = 0;
@@ -312,11 +320,13 @@ redo_counts:
 	} else if (fixit == 0)
 		ext2fs_unmark_valid(fs);
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	if (fs->super->s_feature_ro_compat &
 			NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT)
 		/* ignore free block counts in next3 snapshot image */
 		goto errout;
 
+#endif
 	for (i = 0; i < fs->group_desc_count; i++) {
 		if (free_array[i] != fs->group_desc[i].bg_free_blocks_count) {
 			pctx.group = i;
@@ -347,6 +357,7 @@ errout:
 	ext2fs_free_mem(&free_array);
 }
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 static void check_exclude_bitmaps(e2fsck_t ctx)
 {
 	ext2_filsys fs = ctx->fs;
@@ -475,6 +486,7 @@ redo_counts:
 		ext2fs_unmark_valid(fs);
 }
 
+#endif
 static void check_inode_bitmaps(e2fsck_t ctx)
 {
 	ext2_filsys fs = ctx->fs;

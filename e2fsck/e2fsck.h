@@ -176,7 +176,9 @@ struct resource_track {
 #define E2F_FLAG_RESIZE_INODE	0x0400 /* Request to recreate resize inode */
 #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 #define E2F_FLAG_EXCLUDE_INODE	0x2000 /* Request to recreate exclude inode */
+#endif
 
 /*
  * Defines for indicating the e2fsck pass number
@@ -231,7 +233,9 @@ struct e2fsck_struct {
 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
 
 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	ext2fs_block_bitmap block_excluded_map; /* Blocks which are excluded */
+#endif
 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
 	ext2fs_block_bitmap block_ea_map; /* Blocks which are used by EA's */
 
@@ -474,8 +478,12 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
 void check_super_block(e2fsck_t ctx);
 int check_backup_super_block(e2fsck_t ctx);
 void check_resize_inode(e2fsck_t ctx);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 void check_exclude_inode(e2fsck_t ctx);
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 void check_snapshots(e2fsck_t ctx);
+#endif
 
 /* util.c */
 extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,
