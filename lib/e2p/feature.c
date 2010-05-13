@@ -29,10 +29,6 @@ static struct feature feature_list[] = {
 			"dir_prealloc" },
 	{	E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL,
 			"has_journal" },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-	{	E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL,
-			"big_journal" },
-#endif
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_IMAGIC_INODES,
 			"imagic_inodes" },
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXT_ATTR,

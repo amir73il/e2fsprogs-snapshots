@@ -158,6 +158,12 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
 		fputs("test_filesystem ", f);
 		flags_found++;
 	}
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+	if (s->s_flags & NEXT3_FLAGS_BIG_JOURNAL) {
+		fputs("big_journal ", f);
+		flags_found++;
+	}
+#endif
 	if (flags_found)
 		fputs("\n", f);
 	else

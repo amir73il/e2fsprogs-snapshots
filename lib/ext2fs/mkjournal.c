@@ -390,27 +390,27 @@ int ext2fs_default_journal_size(__u64 blocks)
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 /* 
- * Big journal is up to 24 times bigger than the default journal
+ * Big journal is up to X times bigger than the default journal
  * to accomodate snapshot COW credits in transactions.
  * journal size is restricted to 1/32 of the filesystem size
  */
-int ext2fs_big_journal_size(__u64 blocks)
+int ext2fs_big_journal_size(int factor, __u64 blocks)
 {
 	int mega_blocks = blocks >> 20;
 	if (!mega_blocks)
 		return -1;
 
-	if (mega_blocks < NEXT3_MAX_COW_CREDITS)
+	if (mega_blocks < factor)
 		/* 32K/1M = 1/32 of filesystem size */
-		return 32768*mega_blocks;
+		return EXT3_DEF_JOURNAL_BLOCKS*mega_blocks;
 	
-	/* 24 times bigger than the default journal */
-	return 32768*NEXT3_MAX_COW_CREDITS;
+	/* X times bigger than the default journal */
+	return EXT3_DEF_JOURNAL_BLOCKS*factor;
 }
 
 /*
  * Find the number of blocks in the journal inode
- * and adjust the file system 'big_journal' feature accordingy
+ * and adjust the file system 'big_journal' flag accordingy
  */
 int ext2fs_check_journal_size(ext2_filsys fs)
 {
@@ -428,11 +428,11 @@ int ext2fs_check_journal_size(ext2_filsys fs)
 	/* read journal inode size */
 	j_blocks = j_inode.i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
 	
-	/* fix the 'big_journal' feature */
+	/* update the 'big_journal' feature */
 	if (j_blocks >= NEXT3_MIN_JOURNAL_BLOCKS)
-		fs->super->s_feature_compat |= NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
+		fs->super->s_flags |= NEXT3_FLAGS_BIG_JOURNAL;
 	else
-		fs->super->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
+		fs->super->s_flags &= ~NEXT3_FLAGS_BIG_JOURNAL;
 
 	return j_blocks;
 }

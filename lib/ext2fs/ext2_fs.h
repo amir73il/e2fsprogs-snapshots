@@ -493,6 +493,9 @@ struct ext2_inode_large {
 #define EXT2_FLAGS_SIGNED_HASH		0x0001  /* Signed dirhash in use */
 #define EXT2_FLAGS_UNSIGNED_HASH	0x0002  /* Unsigned dirhash in use */
 #define EXT2_FLAGS_TEST_FILESYS		0x0004	/* OK for use on development code */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+#define NEXT3_FLAGS_BIG_JOURNAL		0x1000	/* Next3 big journal */
+#endif
 
 /*
  * Mount flags
@@ -653,9 +656,9 @@ struct ext2_super_block {
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 /*
- * 'big journal' needs to accomodate extra snapshot COW credits
- * default size accomodates maximum possible COW credits
- * minimum required size accomodates the avarage COW credits
+ * A Next3 'big' journal needs to accomodate extra snapshot COW credits.
+ * Default journal size accomodates maximum possible COW credits.
+ * Minimum required journal size accomodates the avarage COW credits.
  */
 #define EXT3_DEF_JOURNAL_BLOCKS		32768
 #define NEXT3_AVG_COW_CREDITS		16
@@ -683,7 +686,6 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL	0x1000 /* Has big journal */
 #define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE	0x2000 /* Has exclude inode */
 #endif
 

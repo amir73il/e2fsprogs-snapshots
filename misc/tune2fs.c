@@ -118,9 +118,6 @@ static void usage(void)
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
-#endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
@@ -144,9 +141,6 @@ static __u32 ok_features[3] = {
 static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
-#endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
@@ -630,25 +624,6 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-	if (FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) {
-		if (sb->s_feature_compat &
-		    EXT3_FEATURE_COMPAT_HAS_JOURNAL) {
-			/* update 'big_journal' flag according to existing journal size */
-			ext2fs_check_journal_size(fs);
-			if (!FEATURE_CHANGED(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_BIG_JOURNAL))
-				fputs(_("the filesystem already has a journal.\n"
-							"Please remove it before changing "
-							"the big_journal flag.\n"), stderr);
-		}
-		else if (sb->s_feature_compat & NEXT3_FEATURE_COMPAT_BIG_JOURNAL) {
-			/* create 'big_journal' */
-			if (!journal_size)
-				journal_size = -1;
-		}
-	}
-
-#endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		remove_exclude_inode(fs);
@@ -687,28 +662,30 @@ static void update_feature_set(ext2_filsys fs, char *features)
 			/* update 'big_journal' flag */
 			ext2fs_check_journal_size(fs);
 		}
-		else if (!journal_size) {
-			/* create 'big_journal' */
-			journal_size = -1;
-			sb->s_feature_compat |= NEXT3_FEATURE_COMPAT_BIG_JOURNAL;
+		else if (!journal_size || journal_size == -1) {
+			/* Create a big journal for Next3 */
+			journal_size = -NEXT3_MAX_COW_CREDITS;
+			sb->s_flags |= NEXT3_FLAGS_BIG_JOURNAL;
 		}
 	
+		if (!(sb->s_flags & NEXT3_FLAGS_BIG_JOURNAL))
+			fprintf(stderr,
+				_("Warning: journal size is not big enough.\n"
+				"For best operation of Next3, try re-creating "
+				"the journal with '-J big' before setting the "
+				"'has_snapshot' flag.\n"));
+
 		/* allocate/reset exclude bitmap blocks */
 		retval = ext2fs_create_exclude_inode(fs, 1);
 		if (!retval)
 			sb->s_feature_compat |=
 				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
-
-		type_err = E2P_FEATURE_COMPAT;
-		if (!(sb->s_feature_compat &
-			(mask_err = NEXT3_FEATURE_COMPAT_BIG_JOURNAL)) ||
-			!(sb->s_feature_compat &
-			(mask_err = NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)))
-			fprintf(stderr,_("Warning: the '%s' flag is not set.\n"
-				"For best operation, set the '%s' flag\n"
-				"before setting the 'has_snapshot' flag.\n"),
-				e2p_feature2string(type_err, mask_err),
-				e2p_feature2string(type_err, mask_err));
+		else
+			fprintf(stderr,
+				_("Warning: failed to create exclude inode.\n"
+				"For best operation of Next3, try re-creating "
+				"the exclude inode before setting the "
+				"'has_snapshot' flag.\n"));
 	}
 
 #endif

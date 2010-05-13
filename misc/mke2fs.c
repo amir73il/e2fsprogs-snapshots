@@ -838,9 +838,6 @@ static void parse_extended_opts(struct ext2_super_block *param,
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-		NEXT3_FEATURE_COMPAT_BIG_JOURNAL |
-#endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
@@ -1178,6 +1175,13 @@ static void PRS(int argc, char *argv[])
 		if (!strcmp(program_name, "mkfs.ext3") ||
 		    !strcmp(program_name, "mke3fs"))
 			journal_size = -1;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+		
+		/* If called as mkfs.next3, create a big journal */
+		if (!strcmp(program_name, "mkfs.ext3") ||
+		    !strcmp(program_name, "mkn3fs"))
+			journal_size = -NEXT3_MAX_COW_CREDITS;
+#endif
 	}
 
 	while ((c = getopt (argc, argv,

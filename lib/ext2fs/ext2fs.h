@@ -513,7 +513,6 @@ typedef struct ext2_icount *ext2_icount_t;
 #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
 					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
 					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
-					 NEXT3_FEATURE_COMPAT_BIG_JOURNAL|\
 					 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE|\
 					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
@@ -1109,7 +1108,7 @@ extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
 					  int flags);
 extern int ext2fs_default_journal_size(__u64 blocks);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-extern int ext2fs_big_journal_size(__u64 blocks);
+extern int ext2fs_big_journal_size(int factor, __u64 blocks);
 extern int ext2fs_check_journal_size(ext2_filsys fs);
 #endif
 
