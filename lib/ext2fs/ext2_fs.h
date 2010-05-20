@@ -686,6 +686,7 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD	0x1000 /* Old big journal */
 #define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE	0x2000 /* Has exclude inode */
 #endif
 
