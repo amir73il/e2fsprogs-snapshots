@@ -457,11 +457,7 @@ struct ext2_inode_large {
 #define i_gid_low	i_gid
 #define i_uid_high	osd2.linux2.l_i_uid_high
 #define i_gid_high	osd2.linux2.l_i_gid_high
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-#define i_snapshot_blocks	osd2.linux2.l_i_reserved2
-#else
 #define i_reserved2	osd2.linux2.l_i_reserved2
-#endif
 #else
 #if defined(__GNU__)
 
