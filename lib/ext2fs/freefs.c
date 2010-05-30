@@ -38,10 +38,18 @@ void ext2fs_free(ext2_filsys fs)
 		ext2fs_free_mem(&fs->orig_super);
 	if (fs->group_desc)
 		ext2fs_free_mem(&fs->group_desc);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+	if (fs->exclude_blks)
+		ext2fs_free_mem(&fs->exclude_blks);
+#endif
 	if (fs->block_map)
 		ext2fs_free_block_bitmap(fs->block_map);
 	if (fs->inode_map)
 		ext2fs_free_inode_bitmap(fs->inode_map);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+	if (fs->exclude_map)
+		ext2fs_free_inode_bitmap(fs->exclude_map);
+#endif
 
 	if (fs->badblocks)
 		ext2fs_badblocks_list_free(fs->badblocks);

@@ -395,14 +395,16 @@ static void remove_exclude_inode(ext2_filsys fs)
 	errcode_t		retval;
 	int i;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
 	/*
-	 * reset bg_exclude_bitmap and bg_cow_bitmap to zero
+	 * reset old exclude/cow bitmap cache to zero
 	 */
 	for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
 			i++, gd++) {
-		gd->bg_exclude_bitmap = 0;
-		gd->bg_cow_bitmap = 0;
+		gd->bg_exclude_bitmap_old = 0;
+		gd->bg_cow_bitmap_old = 0;
 	}
+#endif
 	/* clear fix_exclude flag */
 	fs->super->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;

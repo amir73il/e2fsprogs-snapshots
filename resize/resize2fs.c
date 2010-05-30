@@ -1789,7 +1789,7 @@ static errcode_t fix_exclude_inode(ext2_filsys fs)
 		return 0;
 	/* 
 	 * create_exclude_inode():
-	 * - updates bg_exclude_bitmap for existing block groups
+	 * - updates exclude_blks for existing block groups
 	 * - allocates exclude bitmap blocks for new block groups
 	 * - doesn't free exclude bitmap blocks of deleted block group,
 	 *   so when resizing from large to small filesystem, 

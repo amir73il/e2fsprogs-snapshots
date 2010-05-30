@@ -73,8 +73,14 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
-				       NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+					NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
+
+	if (do_exclude && !fs->exclude_blks) {
+		retval = ext2fs_create_exclude_inode(fs, 0);
+		if (retval)
+			return retval;
+	}
 
 #endif
 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
@@ -161,7 +167,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 				return EXT2_ET_BLOCK_BITMAP_WRITE;
 		}
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-		blk = fs->group_desc[i].bg_exclude_bitmap;
+		blk = fs->exclude_blks[i];
 		if (do_exclude && blk) {
 			retval = io_channel_write_blk64(fs->io, blk, 1,
 						      exclude_buf);
@@ -239,8 +245,14 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
-				       NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+					NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
+
+	if (do_exclude && !fs->exclude_blks) {
+		retval = ext2fs_create_exclude_inode(fs, 0);
+		if (retval)
+			return retval;
+	}
 
 #endif
 	if (EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
@@ -371,7 +383,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 		}
 		if (exclude_bitmap) {
-			blk = fs->group_desc[i].bg_exclude_bitmap;
+			blk = fs->exclude_blks[i];
 			if (csum_flag &&
 			    ext2fs_bg_flags_test(fs, i, EXT2_BG_BLOCK_UNINIT) &&
 			    ext2fs_group_desc_csum_verify(fs, i))

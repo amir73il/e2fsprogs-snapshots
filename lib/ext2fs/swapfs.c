@@ -93,10 +93,6 @@ void ext2fs_swap_group_desc(struct ext2_group_desc *gdp)
 	gdp->bg_free_inodes_count = ext2fs_swab16(gdp->bg_free_inodes_count);
 	gdp->bg_used_dirs_count = ext2fs_swab16(gdp->bg_used_dirs_count);
 	gdp->bg_flags = ext2fs_swab16(gdp->bg_flags);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-	gdp->bg_exclude_bitmap = ext2fs_swab32(gdp->bg_exclude_bitmap);
-	gdp->bg_cow_bitmap = ext2fs_swab32(gdp->bg_cow_bitmap);
-#endif
 	gdp->bg_itable_unused = ext2fs_swab16(gdp->bg_itable_unused);
 	gdp->bg_checksum = ext2fs_swab16(gdp->bg_checksum);
 }

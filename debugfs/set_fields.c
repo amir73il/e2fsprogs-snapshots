@@ -189,12 +189,7 @@ static struct field_set_info ext2_bg_fields[] = {
 	{ "free_inodes_count", &set_gd.bg_free_inodes_count, 2, parse_uint },
 	{ "used_dirs_count", &set_gd.bg_used_dirs_count, 2, parse_uint },
 	{ "flags", &set_gd.bg_flags, 2, parse_uint },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-	{ "exclude_bitmap", &set_gd.bg_exclude_bitmap, 4, parse_uint },
-	{ "cow_bitmap", &set_gd.bg_cow_bitmap, 4, parse_uint },
-#else
 	{ "reserved", &set_gd.bg_reserved, 2, parse_uint, FLAG_ARRAY, 2 },
-#endif
 	{ "itable_unused", &set_gd.bg_itable_unused, 2, parse_uint },
 	{ "checksum", &set_gd.bg_checksum, 2, parse_gd_csum },
 	{ 0, 0, 0, 0 }

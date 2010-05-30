@@ -147,15 +147,15 @@ struct ext2_group_desc
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
 	__u16	bg_flags;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
-	__u32	bg_cow_bitmap;		/* COW bitmap block of last snapshot */
-#else
 	__u32	bg_reserved[2];
-#endif
 	__u16	bg_itable_unused;	/* Unused inodes count */
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
+
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#define bg_exclude_bitmap_old bg_reserved[0]	/* Old exclude bitmap cache */
+#define bg_cow_bitmap_old bg_reserved[1]	/* Old COW bitmap cache */
+#endif
 
 struct ext4_group_desc
 {

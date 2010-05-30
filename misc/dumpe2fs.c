@@ -208,17 +208,10 @@ static void list_desc (ext2_filsys fs)
 		if (diff >= 0)
 			printf(" (+%ld)", diff);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-		if (fs->group_desc[i].bg_exclude_bitmap) {
+		if (fs->exclude_blks && fs->exclude_blks[i]) {
 			fputs(_(", Exclude bitmap at "), stdout);
-			print_number(fs->group_desc[i].bg_exclude_bitmap);
-			diff = fs->group_desc[i].bg_exclude_bitmap - first_block;
-			if (diff >= 0 && diff <= fs->super->s_blocks_per_group)
-				printf(" (+%ld)", diff);
-		}
-		if (fs->group_desc[i].bg_cow_bitmap) {
-			fputs(_(", COW bitmap at "), stdout);
-			print_number(fs->group_desc[i].bg_cow_bitmap);
-			diff = fs->group_desc[i].bg_cow_bitmap - first_block;
+			print_number(fs->exclude_blks[i]);
+			diff = fs->exclude_blks[i] - first_block;
 			if (diff >= 0 && diff <= fs->super->s_blocks_per_group)
 				printf(" (+%ld)", diff);
 		}

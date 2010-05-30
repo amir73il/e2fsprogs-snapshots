@@ -222,8 +222,8 @@ out_free:
  * ext2fs_create_exclude_inode():
  * the exclude inode owns all the exclude bitmap blocks (one per block group)
  * the exclude bitmap blocks are double indirectly linked to the exclude inode
- * the exclude bitmap block numbers are stored in the block group descriptors
  * the exclude bitmap allocation goal is the first block of the block group
+ * if @reset is true, reset exclude bitmap to zero
  */
 errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 {
@@ -252,6 +252,14 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	if (retval)
 		goto out_free;
 
+	if (fs->exclude_blks)
+		ext2fs_free_mem(&fs->exclude_blks);
+	retval = ext2fs_get_array(fs->group_desc_count, fs->blocksize,
+			&fs->exclude_blks);
+	if (retval)
+		goto out_free;
+	memset(fs->exclude_blks, 0, fs->group_desc_count*fs->blocksize);
+
 #ifdef EXCLUDE_INO_PROGRESS
 	printf("Reserving exclude bitmap blocks:            ");
 #endif
@@ -263,7 +271,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 #endif
 		retval = ext2fs_read_ind_block(fs, dindir_blk, dindir_buf);
 		if (retval)
-			goto out_inode;
+			goto out_free;
 	} else {
 		blk_t goal = sb->s_first_data_block + fs->desc_blocks +
 			sb->s_reserved_gdt_blocks + 2 +
@@ -284,7 +292,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	}
 
 	/*
-	 * init bg_exclude_bitmap for all existing block groups
+	 * init exclude_blks array for all existing block groups
 	 * and allocate indirect blocks for all reserved block groups
 	 */
 	max_groups = fs->desc_blocks + sb->s_reserved_gdt_blocks;
@@ -363,11 +371,15 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 				data_dirty = 0;
 			}
 		}
-		/* store exclude bitmap block in group descriptor */
-		if (gd->bg_exclude_bitmap != data_blk) {
-			gd->bg_exclude_bitmap = data_blk;
+		fs->exclude_blks[grp] = data_blk;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+		/* reset old exclude/cow bitmap cache to zero */
+		if (gd->bg_exclude_bitmap_old || gd->bg_cow_bitmap_old) {
+			gd->bg_exclude_bitmap_old = 0;
+			gd->bg_cow_bitmap_old = 0;
 			gdt_dirty = 1;
 		}
+#endif
 #ifdef EXCLUDE_INO_PROGRESS
 		printf("\b\b\b\b\b\b\b\b\b\b\b%5d/%5d", grp,
 				fs->group_desc_count);
