@@ -586,7 +586,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		return;
 	}
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-	if (sb->s_feature_compat & NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
+	if (sb->s_feature_compat & EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
 		pctx.errcode = ext2fs_allocate_block_bitmap(fs,
 				_("excluded block map"),
 				&ctx->block_excluded_map);
@@ -1127,7 +1127,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 			memset(&inode, 0, sizeof(inode));
 			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, inode,
 					   "clear_exclude");
-			fs->super->s_feature_compat &= ~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+			fs->super->s_feature_compat &= ~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
 			ctx->flags |= E2F_FLAG_RESTART;
 		}
 		fs->block_map = save_bmap;
@@ -1642,7 +1642,7 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	/* don't clear inode with blocks when preening volume with active snapshot */
 	if ((ctx->fs->super->s_feature_ro_compat &
-				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 ctx->fs->super->s_snapshot_inum) {
 		int i;
 		for (i = 0; i < EXT2_N_BLOCKS; i++)
@@ -1875,9 +1875,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* mark snapshot file blocks excluded */
 	pb.excluded = (pb.is_reg &&
-			(inode->i_flags & NEXT3_SNAPFILE_FL) &&
+			(inode->i_flags & EXT4_SNAPFILE_FL) &&
 			(fs->super->s_feature_compat &
-			 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE));
+			 EXT2_FEATURE_COMPAT_EXCLUDE_INODE));
 #endif
 	pb.max_blocks = 1 << (31 - fs->super->s_log_block_size);
 	pb.inode = inode;

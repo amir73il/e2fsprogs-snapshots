@@ -232,7 +232,7 @@ static int release_orphan_inodes(e2fsck_t ctx)
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	/* never release orphans when scanning volume with active snapshot */
 	if ((fs->super->s_feature_ro_compat &
-				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 		 fs->super->s_snapshot_inum)
 		return 0;
 
@@ -449,12 +449,32 @@ void check_exclude_inode(e2fsck_t ctx)
 
 	clear_problem_context(&pctx);
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	/* Migrate from old to new Next3 on-disk format */
+	if (fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
+		/* Move exclude inode from old to new position */
+		retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
+		if (!retval) {
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
+					   "copy_old_exclude_ino");
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO_OLD, &inode,
+					   "clear_old_exclude_ino");
+			/* Clear old exclude inode flag */
+			fs->super->s_feature_compat &=
+				~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
+			ext2fs_mark_super_dirty(fs);
+		}
+	}
+
+#endif
 	/* Read the exclude inode */
 	pctx.ino = EXT2_EXCLUDE_INO;
 	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);
 	if (retval) {
 		if (fs->super->s_feature_compat &
-		    NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
+		    EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
 			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
 		return;
 	}
@@ -464,7 +484,7 @@ void check_exclude_inode(e2fsck_t ctx)
 	 * the exclude inode is cleared; then we're done.
 	 */
 	if (!(fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+	      EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		for (i=0; i < EXT2_N_BLOCKS; i++) {
 			if (inode.i_block[i])
 				break;
@@ -526,13 +546,12 @@ void check_snapshots(e2fsck_t ctx)
 	int cont;
 
 	if (!(sb->s_feature_ro_compat & 
-			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
+			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
 		!sb->s_snapshot_inum)
 		/* no active snapshot */
 		return;
 
-	if (sb->s_feature_ro_compat & 
-			NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT) {
+	if (sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
 		/* corrupted snapshot need to be fixed */
 		clear_problem_context(&pctx);
 		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {

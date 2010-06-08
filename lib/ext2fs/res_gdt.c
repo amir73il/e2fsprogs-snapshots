@@ -248,6 +248,24 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	indir_buf = (__u32 *)((char *)dindir_buf + 1*fs->blocksize);
 	data_buf = (__u32 *)((char *)dindir_buf + 2*fs->blocksize);
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	/* Migrate from old to new Next3 on-disk format */
+	if (fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
+		/* Move exclude inode from old to new position */
+		retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
+		if (!retval) {
+			ext2fs_write_inode(fs, EXT2_EXCLUDE_INO, &inode);
+			memset(&inode, 0, sizeof(inode));
+			ext2fs_write_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
+			/* Clear old exclude inode flag */
+			fs->super->s_feature_compat &=
+				~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
+			ext2fs_mark_super_dirty(fs);
+		}
+	}
+
+#endif
 	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);
 	if (retval)
 		goto out_free;
@@ -390,8 +408,8 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 #endif
 
 	/* exclude bitmap was reset to zero - clear fix_exclude flag */
-	if (sb->s_feature_ro_compat & NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE) {
-		sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
+	if (sb->s_flags & EXT2_FLAGS_FIX_EXCLUDE) {
+		sb->s_flags &= ~EXT2_FLAGS_FIX_EXCLUDE;
 		ext2fs_mark_super_dirty(fs);
 	}
 

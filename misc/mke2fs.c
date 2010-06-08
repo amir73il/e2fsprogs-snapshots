@@ -380,7 +380,7 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag)
 			ext2fs_group_desc_csum_set(fs, i);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 			if (fs->super->s_feature_compat &
-				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
 				/* zero the designated exclude bitmap block */
 				num++;
 #endif
@@ -839,7 +839,7 @@ static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX |
@@ -853,7 +853,7 @@ static __u32 ok_features[3] = {
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
@@ -2073,7 +2073,7 @@ int main (int argc, char *argv[])
 		}
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		if (fs->super->s_feature_compat &
-		    NEXT3_FEATURE_COMPAT_EXCLUDE_INODE) {
+		    EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
 			retval = ext2fs_create_exclude_inode(fs, 1);
 			if (retval) {
 				com_err("ext2fs_create_exclude_inode", retval,

@@ -816,7 +816,7 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
 
  	/* never rehash directories when scanning volume with active snapshot */
  	if ((ctx->fs->super->s_feature_ro_compat &
-				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
  		 ctx->fs->super->s_snapshot_inum)
  		return;
 

@@ -440,7 +440,7 @@ int main (int argc, char ** argv)
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 		/* do not offline resize a volume with active snapshot */
 		if (!force && (fs->super->s_feature_ro_compat &
-					NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+					EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
 				fs->super->s_snapshot_inum) {
 			fprintf(stderr,
 				_("offline resize will damage next3 snapshots "

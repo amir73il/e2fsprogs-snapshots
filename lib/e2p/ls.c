@@ -158,9 +158,17 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
 		fputs("test_filesystem ", f);
 		flags_found++;
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-	if (s->s_flags & NEXT3_FLAGS_BIG_JOURNAL) {
-		fputs("big_journal ", f);
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+	if (s->s_flags & EXT2_FLAGS_IS_SNAPSHOT) {
+		fputs("is_snapshot ", f);
+		flags_found++;
+	}
+	if (s->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
+		fputs("fix_snapshot ", f);
+		flags_found++;
+	}
+	if (s->s_flags & EXT2_FLAGS_FIX_EXCLUDE) {
+		fputs("fix_exclude ", f);
 		flags_found++;
 	}
 #endif
@@ -323,7 +331,7 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
 			sb->s_snapshot_inum);
 		fprintf(f, "Snapshot ID:       %u\n",
 			sb->s_snapshot_id);
-		fprintf(f, "Snapshot reserved blocks:       %u\n",
+		fprintf(f, "Snapshot reserved blocks:       %llu\n",
 			sb->s_snapshot_r_blocks_count);
 	}
 	if (sb->s_snapshot_list)

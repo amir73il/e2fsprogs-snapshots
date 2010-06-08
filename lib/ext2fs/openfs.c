@@ -199,6 +199,52 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 		goto cleanup;
 	}
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	/* Migrate super from old to new Next3 on-disk format */
+	if ((flags & EXT2_FLAG_RW) &&
+		(fs->super->s_feature_ro_compat &
+			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD) &&
+		!(fs->super->s_feature_ro_compat &
+			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+		struct ext2_super_block *sb = fs->super;
+
+		/* Copy snapshot fields to new positions */
+		sb->s_snapshot_inum = sb->s_snapshot_inum_old;
+		sb->s_snapshot_id = sb->s_snapshot_id_old;
+		sb->s_snapshot_r_blocks_count = sb->s_snapshot_r_blocks_old;
+		sb->s_snapshot_list = sb->s_snapshot_list_old;
+		/* Clear old snapshot fields */
+		sb->s_snapshot_inum_old = 0;
+		sb->s_snapshot_id_old = 0;
+		sb->s_snapshot_r_blocks_old = 0;
+		sb->s_snapshot_list_old = 0;
+		/* Copy snapshot flags to new positions */
+		fs->super->s_feature_ro_compat |=
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
+		if (fs->super->s_feature_compat &
+				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD)
+			fs->super->s_feature_compat |=
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
+		if (fs->super->s_feature_ro_compat &
+				NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD)
+			fs->super->s_flags |= EXT2_FLAGS_FIX_SNAPSHOT;
+		if (fs->super->s_feature_ro_compat &
+				NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE_OLD)
+			fs->super->s_flags |= EXT2_FLAGS_FIX_EXCLUDE;
+		/* Clear old snapshot flags */
+		fs->super->s_feature_ro_compat &=
+				~(NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD|
+				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT_OLD|
+				NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD|
+				NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE_OLD);
+		/* Clear deprecated big journal flag */
+		fs->super->s_feature_compat &=
+				~NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD;
+		/* Keep old exclude inode flag b/c inode was not moved yet */
+		ext2fs_mark_super_dirty(fs);
+	}
+
+#endif
 	/*
 	 * Check for feature set incompatibility
 	 */

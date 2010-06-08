@@ -19,6 +19,20 @@
 #define PFOPT_LONG  1 /* Must be 1 for compatibility with `int long_format'. */
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 #define PFOPT_SNAPSHOT  2
+
+/*
+ * snapshot status/control flags for lsattr/chattr -X.
+ * using free flags on the GET/SETFLAGS ioctl for snapshot control API.
+ * TODO: define new ioctls for snapshot status/control.
+ */
+#define NEXT3_SNAPFILE_LIST_FL		0x00100000 /* snapshot is on list */
+#define NEXT3_SNAPFILE_ACTIVE_FL	0x00200000 /* snapshot is active */
+#define NEXT3_SNAPFILE_OPEN_FL		0x00400000 /* snapshot is mounted */
+#define NEXT3_SNAPFILE_INUSE_FL		0x00800000 /* snapshot is in-use */
+#define NEXT3_SNAPFILE_ENABLED_FL	0x02000000 /* snapshot is enabled */
+#define NEXT3_SNAPFILE_DELETED_FL	0x04000000 /* snapshot is deleted */
+#define NEXT3_SNAPFILE_SHRUNK_FL	0x08000000 /* snapshot is shrunk */
+#define NEXT3_SNAPFILE_TAGGED_FL	0x10000000 /* snapshot is tagged */
 #endif
 
 

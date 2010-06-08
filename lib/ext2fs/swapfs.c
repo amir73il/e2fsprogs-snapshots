@@ -63,8 +63,14 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	sb->s_snapshot_inum = ext2fs_swab32(sb->s_snapshot_inum);
 	sb->s_snapshot_id = ext2fs_swab32(sb->s_snapshot_id);
-	sb->s_snapshot_r_blocks_count = ext2fs_swab32(sb->s_snapshot_r_blocks_count);
+	sb->s_snapshot_r_blocks_count = ext2fs_swab64(sb->s_snapshot_r_blocks_count);
 	sb->s_snapshot_list = ext2fs_swab32(sb->s_snapshot_list);
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	sb->s_snapshot_inum_old = ext2fs_swab32(sb->s_snapshot_inum_old);
+	sb->s_snapshot_id_old = ext2fs_swab32(sb->s_snapshot_id_old);
+	sb->s_snapshot_r_blocks_old = ext2fs_swab32(sb->s_snapshot_r_blocks_old);
+	sb->s_snapshot_list_old = ext2fs_swab32(sb->s_snapshot_list_old);
 #endif
 	sb->s_desc_size = ext2fs_swab16(sb->s_desc_size);
 	sb->s_default_mount_opts = ext2fs_swab32(sb->s_default_mount_opts);

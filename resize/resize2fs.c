@@ -1785,7 +1785,7 @@ errout:
 static errcode_t fix_exclude_inode(ext2_filsys fs)
 {
 	if (!(fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+	      EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		return 0;
 	/* 
 	 * create_exclude_inode():

@@ -116,7 +116,7 @@ static const struct flags_char ext2_flags_array[] = {
 	{ EXT2_UNRM_FL, 'u' },
 	{ EXT2_NOTAIL_FL, 't' },
 	{ EXT2_TOPDIR_FL, 'T' },
-	{ NEXT3_SNAPFILE_FL, 'x' },
+	{ EXT4_SNAPFILE_FL, 'x' },
 	{ 0, 0 }
 };
 

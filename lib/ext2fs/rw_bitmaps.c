@@ -73,7 +73,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
-					NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
 
 	if (do_exclude && !fs->exclude_blks) {
@@ -245,7 +245,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
-					NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
 
 	if (do_exclude && !fs->exclude_blks) {

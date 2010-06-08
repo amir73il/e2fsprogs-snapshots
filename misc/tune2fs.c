@@ -119,7 +119,7 @@ static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
@@ -129,7 +129,7 @@ static __u32 ok_features[3] = {
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
@@ -142,7 +142,7 @@ static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-		NEXT3_FEATURE_COMPAT_EXCLUDE_INODE |
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
@@ -152,7 +152,7 @@ static __u32 clear_ok_features[3] = {
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
@@ -377,7 +377,7 @@ static void discard_snapshot_list(ext2_filsys fs)
 	}
 	
 	/* no snapshots, so no snapshot problems to fix */
-	sb->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT;
+	sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 	ext2fs_mark_super_dirty(fs);
 }
@@ -389,24 +389,31 @@ static void discard_snapshot_list(ext2_filsys fs)
  */
 static void remove_exclude_inode(ext2_filsys fs)
 {
-	struct ext2_group_desc *gd;
 	struct ext2_inode	inode;
 	ino_t			ino = EXT2_EXCLUDE_INO;
 	errcode_t		retval;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	struct ext2_group_desc *gd;
 	int i;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
-	/*
-	 * reset old exclude/cow bitmap cache to zero
-	 */
-	for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
-			i++, gd++) {
-		gd->bg_exclude_bitmap_old = 0;
-		gd->bg_cow_bitmap_old = 0;
+	if (fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
+		/* Remove old exclude inode */
+		ino = EXT2_EXCLUDE_INO_OLD;
+		/* Clear old exclude inode flag */
+		fs->super->s_feature_compat &=
+			~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
+		/* Reset old exclude/cow bitmap cache to zero */
+		for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
+				i++, gd++) {
+			gd->bg_exclude_bitmap_old = 0;
+			gd->bg_cow_bitmap_old = 0;
+		}
 	}
 #endif
+
 	/* clear fix_exclude flag */
-	fs->super->s_feature_ro_compat &= ~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
+	fs->super->s_flags &= ~EXT2_FLAGS_FIX_EXCLUDE;
 	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 	ext2fs_mark_super_dirty(fs);
 
@@ -555,7 +562,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	/* disallow changing features when filesystem has snapshots */
 	if (sb->s_feature_ro_compat & 
-		NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
 		fputs(_("The filesystem has snapshots.  "
 				"Please clear the has_snapshot flag\n"
 				"before clearing/setting other filesystem flags.\n"), 
@@ -563,11 +570,11 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		ok_features[E2P_FEATURE_COMPAT] = 0;
 		ok_features[E2P_FEATURE_INCOMPAT] = 0;
 		ok_features[E2P_FEATURE_RO_INCOMPAT] =
-			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
+			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
 		clear_ok_features[E2P_FEATURE_COMPAT] = 0;
 		clear_ok_features[E2P_FEATURE_INCOMPAT] = 0;
 		clear_ok_features[E2P_FEATURE_RO_INCOMPAT] =
-			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
+			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
 	}
 
 #endif
@@ -627,11 +634,11 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		remove_exclude_inode(fs);
 	}
 
-	if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, NEXT3_FEATURE_COMPAT_EXCLUDE_INODE)) {
+	if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		retval = ext2fs_create_exclude_inode(fs, 1);
 		if (retval) {
 			com_err(program_name, retval,
@@ -643,34 +650,36 @@ static void update_feature_set(ext2_filsys fs, char *features)
 #endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CLEANUP
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT,
-				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		discard_snapshot_list(fs);
 		if (sb->s_feature_compat & 
-				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE) {
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
 			/* reset exclude bitmap blocks */
 			retval = ext2fs_create_exclude_inode(fs, 1);
 			if (retval)
 				sb->s_feature_compat &=
-					~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+					~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
 		}
 	}
 
 #endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
 	if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT,
-				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+		int big_journal = 0;
+
 		if ((sb->s_feature_compat &
 		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
 			/* update 'big_journal' flag */
-			ext2fs_check_journal_size(fs);
-		}
-		else if (!journal_size || journal_size == -1) {
+			big_journal = (ext2fs_check_journal_size(fs) >=
+					NEXT3_MIN_JOURNAL_BLOCKS);
+		} else if (!journal_size || journal_size == -1) {
 			/* Create a big journal for Next3 */
 			journal_size = -NEXT3_MAX_COW_CREDITS;
-			sb->s_flags |= NEXT3_FLAGS_BIG_JOURNAL;
+			big_journal = 1;
 		}
 	
-		if (!(sb->s_flags & NEXT3_FLAGS_BIG_JOURNAL))
+		if (!big_journal)
 			fprintf(stderr,
 				_("Warning: journal size is not big enough.\n"
 				"For best operation of Next3, try re-creating "
@@ -681,7 +690,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		retval = ext2fs_create_exclude_inode(fs, 1);
 		if (!retval)
 			sb->s_feature_compat |=
-				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE;
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
 		else
 			fprintf(stderr,
 				_("Warning: failed to create exclude inode.\n"
@@ -2080,15 +2089,8 @@ retry_open:
 		}
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-	if (l_flag) {
-		ext2fs_check_journal_size(fs);
-		list_super(sb);
-	}
-#else
 	if (l_flag)
 		list_super(sb);
-#endif
 	if (stride_set) {
 		sb->s_raid_stride = stride;
 		ext2fs_mark_super_dirty(fs);

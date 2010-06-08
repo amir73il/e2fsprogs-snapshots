@@ -409,8 +409,7 @@ int ext2fs_big_journal_size(int factor, __u64 blocks)
 }
 
 /*
- * Find the number of blocks in the journal inode
- * and adjust the file system 'big_journal' flag accordingy
+ * Return the number of blocks in the journal inode
  */
 int ext2fs_check_journal_size(ext2_filsys fs)
 {
@@ -428,12 +427,6 @@ int ext2fs_check_journal_size(ext2_filsys fs)
 	/* read journal inode size */
 	j_blocks = j_inode.i_size >> EXT2_BLOCK_SIZE_BITS(fs->super);
 	
-	/* update the 'big_journal' feature */
-	if (j_blocks >= NEXT3_MIN_JOURNAL_BLOCKS)
-		fs->super->s_flags |= NEXT3_FLAGS_BIG_JOURNAL;
-	else
-		fs->super->s_flags &= ~NEXT3_FLAGS_BIG_JOURNAL;
-
 	return j_blocks;
 }
 

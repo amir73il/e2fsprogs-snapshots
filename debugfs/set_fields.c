@@ -117,7 +117,7 @@ static struct field_set_info super_fields[] = {
 	{ "snapshot_inum", &set_sb.s_snapshot_inum, 4, parse_uint },
 	{ "snapshot_id", &set_sb.s_snapshot_id, 4, parse_uint },
 	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count,
-		4, parse_uint },
+		8, parse_uint },
 	{ "snapshot_list", &set_sb.s_snapshot_list, 4, parse_uint },
 #endif
 	{ "hash_seed", &set_sb.s_hash_seed, 16, parse_uuid },

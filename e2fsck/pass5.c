@@ -321,8 +321,7 @@ redo_counts:
 		ext2fs_unmark_valid(fs);
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
-	if (fs->super->s_feature_ro_compat &
-			NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT)
+	if (fs->super->s_flags & EXT2_FLAGS_IS_SNAPSHOT)
 		/* ignore free block counts in next3 snapshot image */
 		goto errout;
 
@@ -374,7 +373,7 @@ static void check_exclude_bitmaps(e2fsck_t ctx)
 	clear_problem_context(&pctx);
 
 	if (!(fs->super->s_feature_compat &
-				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE))
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		return;
 
 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
@@ -476,10 +475,8 @@ redo_counts:
 		}
 		ext2fs_mark_exclude_dirty(fs);
 		/* clear fix_exclude flag */
-		if (fs->super->s_feature_ro_compat &
-				NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE) {
-			fs->super->s_feature_ro_compat &=
-				~NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE;
+		if (fs->super->s_flags & EXT2_FLAGS_FIX_EXCLUDE) {
+			fs->super->s_flags &= ~EXT2_FLAGS_FIX_EXCLUDE;
 			ext2fs_mark_super_dirty(fs);
 		}
 	} else if (fixit == 0)

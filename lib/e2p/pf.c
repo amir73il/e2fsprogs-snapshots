@@ -47,7 +47,7 @@ static struct flags_name flags_array[] = {
 	{ EXT4_EXTENTS_FL, "e", "Extents" },
 	{ EXT4_HUGE_FILE_FL, "h", "Huge_file" },
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
-	{ NEXT3_SNAPFILE_FL, "x", "Snapshot_File" },
+	{ EXT4_SNAPFILE_FL, "x", "Snapshot_File" },
 #endif
 	{ 0, NULL, NULL }
 };
