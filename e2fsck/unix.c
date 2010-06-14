@@ -1284,7 +1284,7 @@ print_unsupp_features:
 		fatal_error(ctx, 0);
 	check_if_skip(ctx);
 	check_resize_inode(ctx);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	check_snapshots(ctx);
 #endif
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE

@@ -238,7 +238,10 @@ struct problem_context {
 #define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+/* Bas snapshot on list */
+#define PR_0_BAD_SNAPSHOT			0x000102
+
 /* Corrupted snapshot */
 #define PR_0_FIX_SNAPSHOT			0x000103
 

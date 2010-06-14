@@ -247,8 +247,10 @@ void parse_journal_opts(const char *opts)
 			"\tis set off by an equals ('=') sign.\n\n"
 			"Valid journal options are:\n"
 			"\tsize=<journal size in megabytes>\n"
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 			"\tbig (Next3 big journal size)\n"
 			"\tbigger=<X times bigger than default size>\n"
+#endif
 			"\tdevice=<journal device>\n\n"
 			"The journal size must be between "
 			"1024 and 10240000 filesystem blocks.\n\n"), stderr);

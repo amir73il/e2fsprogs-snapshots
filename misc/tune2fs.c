@@ -128,7 +128,7 @@ static __u32 ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
@@ -151,7 +151,7 @@ static __u32 clear_ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
@@ -423,9 +423,9 @@ static void remove_exclude_inode(ext2_filsys fs)
 			_("while reading exclude inode"));
 		exit(1);
 	}
-	
+
 	remove_special_inode(fs, ino, &inode, 0);
-	
+
 	retval = ext2fs_write_inode(fs, ino, &inode);
 	if (retval) {
 		com_err(program_name, retval,
@@ -559,7 +559,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
 	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	/* disallow changing features when filesystem has snapshots */
 	if (sb->s_feature_ro_compat & 
 		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
@@ -663,7 +663,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT,
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		int big_journal = 0;

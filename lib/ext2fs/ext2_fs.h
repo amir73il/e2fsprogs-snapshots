@@ -160,6 +160,9 @@ struct ext2_group_desc
 #define bg_cow_bitmap_old bg_reserved[1]	/* Old COW bitmap cache */
 
 #endif
+/*
+ * Structure of a blocks group descriptor
+ */
 struct ext4_group_desc
 {
 	__u32	bg_block_bitmap;	/* Blocks bitmap block */

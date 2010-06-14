@@ -1787,12 +1787,12 @@ static errcode_t fix_exclude_inode(ext2_filsys fs)
 	if (!(fs->super->s_feature_compat &
 	      EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		return 0;
-	/* 
+	/*
 	 * create_exclude_inode():
 	 * - updates exclude_blks for existing block groups
 	 * - allocates exclude bitmap blocks for new block groups
 	 * - doesn't free exclude bitmap blocks of deleted block group,
-	 *   so when resizing from large to small filesystem, 
+	 *   so when resizing from large to small filesystem,
 	 *   it would be wise to remove the exclude inode beforehand.
 	 */
 	return ext2fs_create_exclude_inode(fs, 1);

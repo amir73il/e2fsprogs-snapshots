@@ -229,7 +229,7 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	/* never release orphans when scanning volume with active snapshot */
 	if ((fs->super->s_feature_ro_compat &
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
@@ -518,7 +518,7 @@ void check_exclude_inode(e2fsck_t ctx)
 			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
 		}
 		return;
-	}	
+	}
 
 	/*
 	 * create exclude inode and/or allocate missing exclude bitmap blocks.
@@ -535,7 +535,78 @@ void check_exclude_inode(e2fsck_t ctx)
 }
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+/*
+ * Check that snapshot list contains valid snapshot files.
+ * Returns the number of valid snapshots on list.
+ *
+ * TODO: cleanup orphan snapshot files (not found on list)
+ */
+static int check_snapshot_list(e2fsck_t ctx)
+{
+	ext2_filsys fs = ctx->fs;
+	struct ext2_super_block *sb = fs->super;
+	struct ext2_inode	inode;
+	struct ext2_inode	inode_prev;
+	ext2_ino_t		ino = sb->s_snapshot_list;
+	ext2_ino_t		ino_prev = 0;
+	errcode_t		retval = 0;
+	struct problem_context	pctx;
+	int i = 0;
+	
+	if (!ino && sb->s_snapshot_inum) {
+		/* reset snapshot list head to active snapshot */
+		ino = sb->s_snapshot_list = sb->s_snapshot_inum;
+		ext2fs_mark_super_dirty(fs);
+	}
+	if (ino)
+		fputs(_("Checking snapshots: "), stderr);
+
+	while (ino) {
+		retval = ext2fs_read_inode(fs, ino,  &inode);
+		if (retval || !(inode.i_flags & EXT4_SNAPFILE_FL) ||
+				!LINUX_S_ISREG(inode.i_mode) || 
+				inode.i_dtime) {
+			if (ino == sb->s_snapshot_list) {
+				/* reset list head */
+				sb->s_snapshot_list = 0;
+				ext2fs_mark_super_dirty(fs);
+				ino = sb->s_snapshot_inum;
+				continue;
+			}
+			clear_problem_context(&pctx);
+			if (!fix_problem(ctx, PR_0_BAD_SNAPSHOT, &pctx))
+				break;
+
+			/* disconnect inode from snapshot list */
+			if (ino == sb->s_snapshot_inum) {
+				/* reset active snapshot */
+				sb->s_snapshot_inum = 0;
+				ext2fs_mark_super_dirty(fs);
+			}
+			if (ino_prev) {
+				/* terminate list at prev inode */
+				inode_prev.i_next_snapshot = 0;
+				e2fsck_write_inode(ctx, ino_prev, &inode_prev,
+						"terminate snapshot list");
+			}
+			break;
+		}
+
+		fprintf(stderr, _("%u,"), inode.i_generation);
+		inode_prev = inode;
+		ino_prev = ino;
+		ino = inode.i_next_snapshot;
+		i++;
+	}
+	
+	if (ino_prev && !ino)
+		fputs(_("done\n"), stderr);
+	return i;
+}
+
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 /*
  * This function checks if the file system has snapshots
  */
@@ -545,21 +616,31 @@ void check_snapshots(e2fsck_t ctx)
 	struct problem_context	pctx;
 	int cont;
 
-	if (!(sb->s_feature_ro_compat & 
-			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) ||
-		!sb->s_snapshot_inum)
-		/* no active snapshot */
+	if (!(sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT))
+		/* no snapshots */
 		return;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
 	if (sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
 		/* corrupted snapshot need to be fixed */
 		clear_problem_context(&pctx);
 		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
-			/* TODO: fix snapshot problems */
-			ctx->flags |= E2F_FLAG_ABORT;
+			/* discard snapshot list */
+			sb->s_snapshot_list = sb->s_snapshot_inum = 0;
+			sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
+			ext2fs_mark_super_dirty(ctx->fs);
 			return;
 		}
 	}
+
+	if (!check_snapshot_list(ctx))
+		/* no valid snapshots on list */
+		return;
+
+#endif
+	if (!sb->s_snapshot_inum)
+		/* no active snapshot */
+		return;
 
 	if ((ctx->options & E2F_OPT_PREEN) ||
 		(ctx->options & E2F_OPT_NO))

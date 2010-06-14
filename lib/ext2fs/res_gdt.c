@@ -348,7 +348,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 				dindir_dirty = inode_dirty = 1;
 			}
 		}
-		
+
 		if (grp >= fs->group_desc_count)
 			continue;
 		/* read/alloc exclude bitmap block */
@@ -439,7 +439,7 @@ out_inode:
 		ext2fs_mark_super_dirty(fs);
 	}
 #ifdef EXCLUDE_INO_DEBUG
-	printf("inode.i_blocks = %u, i_size = %u\n", 
+	printf("inode.i_blocks = %u, i_size = %u\n",
 			inode.i_blocks, inode.i_size);
 #endif
 out_free:

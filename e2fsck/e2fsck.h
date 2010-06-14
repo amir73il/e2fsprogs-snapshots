@@ -481,7 +481,7 @@ void check_resize_inode(e2fsck_t ctx);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 void check_exclude_inode(e2fsck_t ctx);
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 void check_snapshots(e2fsck_t ctx);
 #endif
 

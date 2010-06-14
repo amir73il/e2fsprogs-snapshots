@@ -40,7 +40,13 @@
 #define PROMPT_UNLINK	17
 #define PROMPT_CLEAR_HTREE 18
 #define PROMPT_RECREATE 19
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+#define PROMPT_TERMINATE_LIST 20
+#define PROMPT_DISCARD_SNAPSHOTS 21
+#define PROMPT_NULL	22
+#else
 #define PROMPT_NULL	20
+#endif
 
 /*
  * These are the prompts which are used to ask the user if they want
@@ -67,7 +73,13 @@ static const char *prompt[] = {
 	N_("Unlink"),		/* 17 */
 	N_("Clear HTree index"),/* 18 */
 	N_("Recreate"),		/* 19 */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+	N_("Terminate list"),	/* 20 */
+	N_("Discard snapshots"),/* 21 */
+	"",			/* 22 */
+#else
 	"",			/* 20 */
+#endif
 };
 
 /*
@@ -344,13 +356,17 @@ static struct e2fsck_problem problem_table[] = {
 	  PROMPT_RECREATE, 0 },
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+	/* Bad snapshot on list */
+	{ PR_0_BAD_SNAPSHOT,
+	  N_("Bad @i found on snapshot list.  "),
+	  PROMPT_TERMINATE_LIST, PR_PREEN_OK },
+
 	/* Corrupted snapshot */
 	{ PR_0_FIX_SNAPSHOT,
 	  N_("@f has corrupted snapshots.\n"
-	     "This version of e2fsck does not support fixing snapshots.\n"
-	     "You may wish to discard snapshots and run e2fsck again.\n"),
-	  PROMPT_ABORT, 0 },
+	     "This version of e2fsck does not support fixing snapshots.\n"),
+	  PROMPT_DISCARD_SNAPSHOTS, 0 },
 
 #endif
 	/* Last mount time is in the future */

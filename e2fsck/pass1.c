@@ -1639,7 +1639,7 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 			struct ext2_inode *inode, int restart_flag,
 			const char *source)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	/* don't clear inode with blocks when preening volume with active snapshot */
 	if ((ctx->fs->super->s_feature_ro_compat &
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&

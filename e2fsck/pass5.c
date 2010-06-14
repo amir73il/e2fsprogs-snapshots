@@ -320,7 +320,7 @@ redo_counts:
 	} else if (fixit == 0)
 		ext2fs_unmark_valid(fs);
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_RO_COMPAT
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
 	if (fs->super->s_flags & EXT2_FLAGS_IS_SNAPSHOT)
 		/* ignore free block counts in next3 snapshot image */
 		goto errout;
