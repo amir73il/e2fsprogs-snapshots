@@ -84,11 +84,11 @@ struct process_block_struct {
 #else
 				fragmented:1, compressed:1, bbcheck:1;
 #endif
-	blk_t		num_blocks;
-	blk_t		max_blocks;
+	blk64_t		num_blocks;
+	blk64_t		max_blocks;
 	e2_blkcnt_t	last_block;
 	int		num_illegal_blocks;
-	blk_t		previous_block;
+	blk64_t		previous_block;
 	struct ext2_inode *inode;
 	struct problem_context *pctx;
 	ext2fs_block_bitmap fs_meta_blocks;

@@ -261,29 +261,36 @@ no_valid_journal:
 	free(journal_path);
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-/* Helper function for remove_special_inode */
-static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
-		e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
-		blk_t ref_block EXT2FS_ATTR((unused)),
-		int ref_offset EXT2FS_ATTR((unused)),
-		void *private EXT2FS_ATTR((unused)))
-#else
+#define blk64_t blk_t
+#define ext2fs_block_iterate3 \
+	ext2fs_block_iterate2
+#define ext2fs_unmark_block_bitmap2 \
+	ext2fs_unmark_block_bitmap
+#define ext2fs_group_of_blk2 \
+	ext2fs_group_of_blk
+#define ext2fs_bg_free_blocks_count_set(fs, group, count) \
+	fs->group_desc[group].bg_free_blocks_count = (count)
+#define ext2fs_bg_free_blocks_count(fs, group) \
+	fs->group_desc[group].bg_free_blocks_count
+#define ext2fs_free_blocks_count_add(sb, count) \
+	sb->s_free_blocks_count += (count)
+
 /* Helper function for remove_journal_inode */
-static int release_blocks_proc(ext2_filsys fs, blk_t *blocknr,
-			       int blockcnt EXT2FS_ATTR((unused)),
+static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
+			       e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+			       blk64_t ref_block EXT2FS_ATTR((unused)),
+			       int ref_offset EXT2FS_ATTR((unused)),
 			       void *private EXT2FS_ATTR((unused)))
-#endif
 {
-	blk_t	block;
+	blk64_t	block;
 	int	group;
 
 	block = *blocknr;
-	ext2fs_unmark_block_bitmap(fs->block_map, block);
-	group = ext2fs_group_of_blk(fs, block);
-	fs->group_desc[group].bg_free_blocks_count++;
+	ext2fs_unmark_block_bitmap2(fs->block_map, block);
+	group = ext2fs_group_of_blk2(fs, block);
+	ext2fs_bg_free_blocks_count_set(fs, group, ext2fs_bg_free_blocks_count(fs, group) + 1);
 	ext2fs_group_desc_csum_set(fs, group);
-	fs->super->s_free_blocks_count++;
+	ext2fs_free_blocks_count_add(fs->super, 1);
 	return 0;
 }
 
@@ -303,7 +310,7 @@ static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino,
 				_("while reading bitmaps"));
 		exit(1);
 	}
-	retval = ext2fs_block_iterate2(fs, ino,
+	retval = ext2fs_block_iterate3(fs, ino,
 			BLOCK_FLAG_READ_ONLY, NULL,
 			release_blocks_proc, NULL);
 	if (retval) {
@@ -462,9 +469,9 @@ static void remove_journal_inode(ext2_filsys fs)
 				_("while reading bitmaps"));
 			exit(1);
 		}
-		retval = ext2fs_block_iterate(fs, ino,
-					      BLOCK_FLAG_READ_ONLY, NULL,
-					      release_blocks_proc, NULL);
+		retval = ext2fs_block_iterate3(fs, ino,
+					       BLOCK_FLAG_READ_ONLY, NULL,
+					       release_blocks_proc, NULL);
 		if (retval) {
 			com_err(program_name, retval,
 				_("while clearing journal inode"));
@@ -536,11 +543,9 @@ static void update_feature_set(ext2_filsys fs, char *features)
 {
 	struct ext2_super_block *sb = fs->super;
 	__u32		old_features[3];
+	errcode_t	retval;
 	int		type_err;
 	unsigned int	mask_err;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-	errcode_t	retval;
-#endif
 
 #define FEATURE_ON(type, mask) (!(old_features[(type)] & (mask)) && \
 				((&sb->s_feature_compat)[(type)] & (mask)))

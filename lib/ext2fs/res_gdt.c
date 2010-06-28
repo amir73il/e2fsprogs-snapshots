@@ -217,6 +217,8 @@ out_free:
 	return retval;
 }
 
+#define ext2fs_group_desc(fs, gdp, grp) (gdp)+(grp)
+
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * ext2fs_create_exclude_inode():
@@ -316,7 +318,8 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	max_groups = fs->desc_blocks + sb->s_reserved_gdt_blocks;
 	max_groups *= EXT2_DESC_PER_BLOCK(sb);
 	for (grp = 0; grp < max_groups; grp++) {
-		struct ext2_group_desc *gd = fs->group_desc+grp;
+		struct ext2_group_desc *gd =
+			ext2fs_group_desc(fs, fs->group_desc, grp);
 
 		dindir_off = grp/apb;
 		indir_off = grp%apb;

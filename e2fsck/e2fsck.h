@@ -176,9 +176,12 @@ struct resource_track {
 #define E2F_FLAG_RESIZE_INODE	0x0400 /* Request to recreate resize inode */
 #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
+#define E2F_FLAG_TIME_INSANE	0x2000 /* Time is insane */
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-#define E2F_FLAG_EXCLUDE_INODE	0x2000 /* Request to recreate exclude inode */
+#define E2F_FLAG_EXCLUDE_INODE	0x4000 /* Request to recreate exclude inode */
 #endif
+
+#define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE)
 
 /*
  * Defines for indicating the e2fsck pass number

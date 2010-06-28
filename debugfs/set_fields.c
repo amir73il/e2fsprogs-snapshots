@@ -113,13 +113,6 @@ static struct field_set_info super_fields[] = {
 	{ "journal_inum", &set_sb.s_journal_inum, 4, parse_uint },
 	{ "journal_dev", &set_sb.s_journal_dev, 4, parse_uint },
 	{ "last_orphan", &set_sb.s_last_orphan, 4, parse_uint },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
-	{ "snapshot_inum", &set_sb.s_snapshot_inum, 4, parse_uint },
-	{ "snapshot_id", &set_sb.s_snapshot_id, 4, parse_uint },
-	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count,
-		8, parse_uint },
-	{ "snapshot_list", &set_sb.s_snapshot_list, 4, parse_uint },
-#endif
 	{ "hash_seed", &set_sb.s_hash_seed, 16, parse_uuid },
 	{ "def_hash_version", &set_sb.s_def_hash_version, 1, parse_hashalg },
 	{ "jnl_backup_type", &set_sb.s_jnl_backup_type, 1, parse_uint },
@@ -141,6 +134,13 @@ static struct field_set_info super_fields[] = {
 	{ "raid_stripe_width", &set_sb.s_raid_stripe_width, 4, parse_uint },
 	{ "log_groups_per_flex", &set_sb.s_log_groups_per_flex, 1, parse_uint },
 	{ "kbytes_written", &set_sb.s_kbytes_written, 8, parse_uint },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+	{ "snapshot_inum", &set_sb.s_snapshot_inum, 4, parse_uint },
+	{ "snapshot_id", &set_sb.s_snapshot_id, 4, parse_uint },
+	{ "snapshot_r_blocks_count", &set_sb.s_snapshot_r_blocks_count,
+		8, parse_uint },
+	{ "snapshot_list", &set_sb.s_snapshot_list, 4, parse_uint },
+#endif
 	{ 0, 0, 0, 0 }
 };
 

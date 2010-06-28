@@ -356,13 +356,22 @@ errout:
 	ext2fs_free_mem(&free_array);
 }
 
+#define blk64_t blk_t
+#define ext2fs_bg_flags_test(fs, group, flag) \
+	(fs->group_desc[group].bg_flags & flag)
+#define ext2fs_bg_flags_clear(fs, group, flag) \
+	fs->group_desc[group].bg_flags &= ~flag
+#define ext2fs_blocks_count(sb) \
+	(sb)->s_blocks_count
+#define ext2fs_fast_test_block_bitmap2 ext2fs_fast_test_block_bitmap
+
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 static void check_exclude_bitmaps(e2fsck_t ctx)
 {
 	ext2_filsys fs = ctx->fs;
-	blk_t	i;
+	blk64_t	i;
 	int	group = 0;
-	blk_t	blocks = 0;
+	int	blocks = 0;
 	int	actual, bitmap;
 	struct problem_context	pctx;
 	int	problem, save_problem, fixit, had_problem;
@@ -383,18 +392,18 @@ redo_counts:
 	save_problem = 0;
 	pctx.blk = pctx.blk2 = NO_BLK;
 	if (csum_flag &&
-	    (fs->group_desc[group].bg_flags & EXT2_BG_BLOCK_UNINIT))
+	    (ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT)))
 		skip_group++;
 	for (i = fs->super->s_first_data_block;
-	     i < fs->super->s_blocks_count;
+	     i < ext2fs_blocks_count(fs->super);
 	     i++) {
-		actual = ext2fs_fast_test_block_bitmap(ctx->block_excluded_map, i);
+		actual = ext2fs_fast_test_block_bitmap2(ctx->block_excluded_map, i);
 
 		if (skip_group) {
 			bitmap = 0;
 			actual = (actual != 0);
 		} else
-			bitmap = ext2fs_fast_test_block_bitmap(fs->exclude_map, i);
+			bitmap = ext2fs_fast_test_block_bitmap2(fs->exclude_map, i);
 
 		if (actual == bitmap)
 			goto do_counts;
@@ -415,8 +424,7 @@ redo_counts:
 				pctx2.blk = i;
 				pctx2.group = group;
 				if (fix_problem(ctx, PR_5_BLOCK_UNINIT,&pctx2)){
-					fs->group_desc[group].bg_flags &=
-						~EXT2_BG_BLOCK_UNINIT;
+					ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
 					skip_group = 0;
 				}
 			}
@@ -449,9 +457,9 @@ redo_counts:
 						    fs->group_desc_count*2))
 					return;
 			if (csum_flag &&
-			    (i != fs->super->s_blocks_count-1) &&
-			    (fs->group_desc[group].bg_flags &
-			     EXT2_BG_BLOCK_UNINIT))
+			    (i != ext2fs_blocks_count(fs->super)-1) &&
+			    ext2fs_bg_flags_test(fs, group,
+				    		EXT2_BG_BLOCK_UNINIT))
 				skip_group++;
 		}
 	}
