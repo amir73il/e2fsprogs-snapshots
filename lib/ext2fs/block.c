@@ -309,6 +309,7 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 	errcode_t	retval;
 	struct block_context ctx;
 	int	limit;
+	blk_t	blk64;
 
 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
 
@@ -456,9 +457,19 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 	 * Iterate over normal data blocks
 	 */
 	for (i = 0; i < EXT2_NDIR_BLOCKS ; i++, ctx.bcount++) {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+		if ((inode.i_flags & EXT4_SNAPFILE_FL) &&
+				LINUX_S_ISREG(inode.i_mode) &&
+				i < NEXT3_EXTRA_TIND_BLOCKS)
+			/* snapshot file extra triple indirect blocks */
+			continue;
+
+#endif
 		if (inode.i_block[i] || (flags & BLOCK_FLAG_APPEND)) {
-			ret |= (*ctx.func)(fs, &inode.i_block[i],
-					    ctx.bcount, 0, i, priv_data);
+			blk64 = inode.i_block[i];
+			ret |= (*ctx.func)(fs, &blk64, ctx.bcount, 0, i, 
+					   priv_data);
+			inode.i_block[i] = (blk_t) blk64;
 			if (ret & BLOCK_ABORT)
 				goto abort_exit;
 		}
@@ -484,6 +495,17 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 		if (ret & BLOCK_ABORT)
 			goto abort_exit;
 	}
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	if ((inode.i_flags & EXT4_SNAPFILE_FL) && LINUX_S_ISREG(inode.i_mode)) {
+		/* iterate snapshot file extra triple indirect blocks */
+		for (i = 0; i < NEXT3_EXTRA_TIND_BLOCKS; i++) {
+			ret |= block_iterate_tind(&inode.i_block[i],
+						  0, EXT2_N_BLOCKS+i, &ctx);
+			if (ret & BLOCK_ABORT)
+				goto abort_exit;
+		}
+	}
+#endif
 
 abort_exit:
 	if (ret & BLOCK_CHANGED) {

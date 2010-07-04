@@ -136,6 +136,10 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 	struct ext2_inode inode_buf;
 	ext2_extent_handle_t handle = 0;
 	blk_t addr_per_block;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	blk64_t addr_per_tind_block;
+	int	tind;
+#endif
 	blk_t	b, blk32;
 	char	*buf = 0;
 	errcode_t	retval = 0;
@@ -289,7 +293,24 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 
 	/* Triply indirect block */
 	block -= addr_per_block * addr_per_block;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	tind = EXT2_TIND_BLOCK;
+	addr_per_tind_block = addr_per_block * addr_per_block * addr_per_block;
+	if (block > addr_per_tind_block) {
+		/* use direct blocks as extra triple indirect blocks? */
+		tind = block / addr_per_tind_block;
+		block -= tind * addr_per_tind_block;
+		if (!(inode->i_flags & EXT4_SNAPFILE_FL) ||
+				!LINUX_S_ISREG(inode->i_mode) ||
+				tind >= NEXT3_EXTRA_TIND_BLOCKS) {
+			retval = EXT2_ET_BAD_BLOCK_NUM;
+			goto done;
+		}
+	}
+	b = inode_bmap(inode, tind);
+#else
 	b = inode_bmap(inode, EXT2_TIND_BLOCK);
+#endif
 	if (!b) {
 		if (!(bmap_flags & BMAP_ALLOC)) {
 			if (bmap_flags & BMAP_SET)
@@ -301,7 +322,11 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 		retval = ext2fs_alloc_block(fs, b, block_buf, &b);
 		if (retval)
 			goto done;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+		inode_bmap(inode, tind) = b;
+#else
 		inode_bmap(inode, EXT2_TIND_BLOCK) = b;
+#endif
 		blocks_alloc++;
 	}
 	retval = block_tind_bmap(fs, bmap_flags, b, block_buf,

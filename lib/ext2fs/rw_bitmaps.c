@@ -167,8 +167,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 				return EXT2_ET_BLOCK_BITMAP_WRITE;
 		}
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-		blk = fs->exclude_blks[i];
-		if (do_exclude && blk) {
+		if (do_exclude && (blk = fs->exclude_blks[i])) {
 			retval = io_channel_write_blk64(fs->io, blk, 1,
 						      exclude_buf);
 			if (retval)

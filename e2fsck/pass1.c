@@ -55,6 +55,9 @@
 #define _INLINE_ inline
 #endif
 
+#define ext2fs_file_acl_block(inode) \
+	(inode)->i_file_acl
+
 static int process_block(ext2_filsys fs, blk_t	*blocknr,
 			 e2_blkcnt_t blockcnt, blk_t ref_blk,
 			 int ref_offset, void *priv_data);
@@ -1046,7 +1049,10 @@ void e2fsck_pass1(e2fsck_t ctx)
 		    (inode->i_block[EXT2_IND_BLOCK] ||
 		     inode->i_block[EXT2_DIND_BLOCK] ||
 		     inode->i_block[EXT2_TIND_BLOCK] ||
-		     inode->i_file_acl)) {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+		     (inode->i_flags & EXT4_SNAPFILE_FL) ||
+#endif
+		     ext2fs_file_acl_block(inode))) {
 			inodes_to_process[process_inode_count].ino = ino;
 			inodes_to_process[process_inode_count].inode = *inode;
 			process_inode_count++;
@@ -1978,8 +1984,15 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 		}
 	}
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	if ((!(fs->super->s_feature_ro_compat &
+	       EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
+	     /* snapshot file always supports the 'huge_file' flag */
+	     !(inode->i_flags & EXT4_SNAPFILE_FL)) ||
+#else
 	if (!(fs->super->s_feature_ro_compat &
 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+#endif
 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
 		pb.num_blocks *= (fs->blocksize / 512);
 #if 0
@@ -2009,6 +2022,9 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize))
 			bad_size = 3;
 		else if (!(extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) &&
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+			 !(pb.is_reg && (inode->i_flags & EXT4_SNAPFILE_FL)) &&
+#endif
 			 size > ext2_max_sizes[fs->super->s_log_block_size])
 			/* too big for a direct/indirect-mapped file */
 			bad_size = 4;
@@ -2034,8 +2050,15 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	    (inode->i_size_high || inode->i_size & 0x80000000UL))
 		ctx->large_files++;
 	if ((pb.num_blocks != inode->i_blocks) ||
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	    (((fs->super->s_feature_ro_compat &
+	       EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+	      /* snapshot file always supports the 'huge_file' flag */
+	      (inode->i_flags & EXT4_SNAPFILE_FL)) &&
+#else
 	    ((fs->super->s_feature_ro_compat &
 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
+#endif
 	     (inode->i_flags & EXT4_HUGE_FILE_FL) &&
 	     (inode->osd2.linux2.l_i_blocks_hi != 0))) {
 		pctx->num = pb.num_blocks;

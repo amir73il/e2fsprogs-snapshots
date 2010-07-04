@@ -258,6 +258,19 @@ struct ext2_dx_countlimit {
 #define EXT2_DIND_BLOCK			(EXT2_IND_BLOCK + 1)
 #define EXT2_TIND_BLOCK			(EXT2_DIND_BLOCK + 1)
 #define EXT2_N_BLOCKS			(EXT2_TIND_BLOCK + 1)
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+/*
+ * Snapshot files have different indirection mapping that can map up to 2^32
+ * logical blocks, so they can cover the mapped filesystem block address space.
+ * Next3 must use either 4K or 8K blocks (depending on PAGE_SIZE).
+ * With 8K blocks, 1 triple indirect block maps 2^33 logical blocks.
+ * With 4K blocks (the system default), each triple indirect block maps 2^30
+ * logical blocks, so 4 triple indirect blocks map 2^32 logical blocks.
+ * Snapshot files in small filesystems (<= 4G), use only 1 double indirect
+ * block to map the entire filesystem.
+ */
+#define	NEXT3_EXTRA_TIND_BLOCKS		3
+#endif
 
 /*
  * Inode flags

@@ -201,8 +201,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
 	/* Migrate super from old to new Next3 on-disk format */
-	if ((flags & EXT2_FLAG_RW) &&
-		(fs->super->s_feature_ro_compat &
+	if ((fs->super->s_feature_ro_compat &
 			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD) &&
 		!(fs->super->s_feature_ro_compat &
 			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
@@ -241,7 +240,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 		fs->super->s_feature_compat &=
 				~NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD;
 		/* Keep old exclude inode flag b/c inode was not moved yet */
-		ext2fs_mark_super_dirty(fs);
+		if (flags & EXT2_FLAG_RW)
+			/* in read-only mode just convert the in-memory copy */
+			ext2fs_mark_super_dirty(fs);
 	}
 
 #endif

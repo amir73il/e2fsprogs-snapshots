@@ -274,6 +274,8 @@ no_valid_journal:
 	fs->group_desc[group].bg_free_blocks_count
 #define ext2fs_free_blocks_count_add(sb, count) \
 	sb->s_free_blocks_count += (count)
+#define ext2fs_group_desc(fs, gdp, grp) \
+	(gdp)+(grp)
 
 /* Helper function for remove_journal_inode */
 static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
@@ -411,8 +413,8 @@ static void remove_exclude_inode(ext2_filsys fs)
 		fs->super->s_feature_compat &=
 			~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
 		/* Reset old exclude/cow bitmap cache to zero */
-		for (i = 0, gd = fs->group_desc; i < fs->group_desc_count;
-				i++, gd++) {
+		for (i = 0; i < fs->group_desc_count; i++) {
+			gd = ext2fs_group_desc(fs, fs->group_desc, i);
 			gd->bg_exclude_bitmap_old = 0;
 			gd->bg_cow_bitmap_old = 0;
 		}
