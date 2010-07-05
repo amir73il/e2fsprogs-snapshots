@@ -620,19 +620,33 @@ void check_snapshots(e2fsck_t ctx)
 		/* no snapshots */
 		return;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
-	if (sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+	if ((ctx->options & E2F_OPT_FIX_SNAPSHOT) ||
+			(sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT)) {
 		/* corrupted snapshot need to be fixed */
 		clear_problem_context(&pctx);
 		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
-			/* discard snapshot list */
-			sb->s_snapshot_list = sb->s_snapshot_inum = 0;
-			sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
-			ext2fs_mark_super_dirty(ctx->fs);
+			if ((sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) ||
+				(sb->s_snapshot_list || sb->s_snapshot_inum)) {
+				/* reset snapshot list head */
+				sb->s_snapshot_list = sb->s_snapshot_inum = 0;
+				sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
+				ext2fs_mark_super_dirty(ctx->fs);
+			}
+			/* don't ask again after pass1 */
+			ctx->options &= ~E2F_OPT_FIX_SNAPSHOT;
+			/* clear all snapshot inodes (in pass1) */
+			ctx->flags |= E2F_FLAG_CLEAR_SNAPSHOTS;
+			if (sb->s_feature_compat &
+					EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
+				/* and reset exclude bitmap */
+				ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
 			return;
 		}
 	}
 
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
 	if (!check_snapshot_list(ctx))
 		/* no valid snapshots on list */
 		return;

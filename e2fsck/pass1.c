@@ -83,7 +83,7 @@ struct process_block_struct {
 	ext2_ino_t	ino;
 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-			fragmented:1, compressed:1, bbcheck:1, excluded:1;
+			fragmented:1, compressed:1, bbcheck:1, snapfile:1;
 #else
 				fragmented:1, compressed:1, bbcheck:1;
 #endif
@@ -1879,11 +1879,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
 	pb.is_reg = LINUX_S_ISREG(inode->i_mode);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-	/* mark snapshot file blocks excluded */
-	pb.excluded = (pb.is_reg &&
-			(inode->i_flags & EXT4_SNAPFILE_FL) &&
-			(fs->super->s_feature_compat &
-			 EXT2_FEATURE_COMPAT_EXCLUDE_INODE));
+	pb.snapfile = (pb.is_reg && (inode->i_flags & EXT4_SNAPFILE_FL));
 #endif
 	pb.max_blocks = 1 << (31 - fs->super->s_log_block_size);
 	pb.inode = inode;
@@ -1892,6 +1888,15 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	pctx->ino = ino;
 	pctx->errcode = 0;
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+	if (pb.snapfile && (ctx->flags & E2F_FLAG_CLEAR_SNAPSHOTS)) {
+		/* discarding all snapshot files */
+		e2fsck_clear_inode(ctx, ino, inode, E2F_FLAG_RESTART,
+				   "check_blocks");
+		return;
+	}
+
+#endif
 	extent_fs = (ctx->fs->super->s_feature_incompat &
                      EXT3_FEATURE_INCOMPAT_EXTENTS);
 
@@ -2274,7 +2279,8 @@ static int process_block(ext2_filsys fs,
 	} else
 		mark_block_used(ctx, blk);
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
-	if (p->excluded && ctx->block_excluded_map)
+	/* mark snapshot file blocks excluded */
+	if (p->snapfile && ctx->block_excluded_map)
 		ext2fs_fast_mark_block_bitmap(ctx->block_excluded_map, blk);
 #endif
 	p->num_blocks++;

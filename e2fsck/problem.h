@@ -242,6 +242,8 @@ struct problem_context {
 /* Bas snapshot on list */
 #define PR_0_BAD_SNAPSHOT			0x000102
 
+#endif
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
 /* Corrupted snapshot */
 #define PR_0_FIX_SNAPSHOT			0x000103
 
