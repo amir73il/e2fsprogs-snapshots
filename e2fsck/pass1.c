@@ -55,6 +55,8 @@
 #define _INLINE_ inline
 #endif
 
+#define ext2fs_inode_i_blocks(fs, inode) \
+	(inode)->i_blocks
 #define ext2fs_file_acl_block(inode) \
 	(inode)->i_file_acl
 
@@ -2054,7 +2056,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	if (LINUX_S_ISREG(inode->i_mode) &&
 	    (inode->i_size_high || inode->i_size & 0x80000000UL))
 		ctx->large_files++;
-	if ((pb.num_blocks != inode->i_blocks) ||
+	if ((pb.num_blocks != ext2fs_inode_i_blocks(fs, inode)) ||
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
 	    (((fs->super->s_feature_ro_compat &
 	       EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
