@@ -1795,7 +1795,7 @@ static errcode_t fix_exclude_inode(ext2_filsys fs)
 	 *   so when resizing from large to small filesystem,
 	 *   it would be wise to remove the exclude inode beforehand.
 	 */
-	return ext2fs_create_exclude_inode(fs, 1);
+	return ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
 }
 
 #endif

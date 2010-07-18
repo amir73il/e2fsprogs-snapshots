@@ -225,9 +225,11 @@ out_free:
  * the exclude inode owns all the exclude bitmap blocks (one per block group)
  * the exclude bitmap blocks are double indirectly linked to the exclude inode
  * the exclude bitmap allocation goal is the first block of the block group
- * if @reset is true, reset exclude bitmap to zero
+ * exclude inode creation @flags:
+ * EXCLUDE_ALLOC (1) - allocate missing exclude bitmap blocks
+ * EXCLUDE_RESET (2) - reset exclude bitmap to zero
  */
-errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
+errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 {
 	errcode_t		retval, retval2;
 	struct ext2_super_block	*sb;
@@ -238,6 +240,8 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 	int			gdt_dirty = 0, dindir_dirty = 0, inode_dirty = 0;
 	int			indir_dirty = 0, data_dirty = 0;
 	int 		dindir_off, indir_off, grp, i, max_groups;
+	int create = flags & EXCLUDE_ALLOC;
+	int reset = flags & EXCLUDE_RESET;
 
 
 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
@@ -257,9 +261,15 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 		/* Move exclude inode from old to new position */
 		retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
 		if (!retval) {
-			ext2fs_write_inode(fs, EXT2_EXCLUDE_INO, &inode);
+			retval = ext2fs_write_inode(fs, EXT2_EXCLUDE_INO,
+					&inode);
+			if (retval)
+				goto out_free;
 			memset(&inode, 0, sizeof(inode));
-			ext2fs_write_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
+			retval = ext2fs_write_inode(fs, EXT2_EXCLUDE_INO_OLD,
+					&inode);
+			if (retval)
+				goto out_free;
 			/* Clear old exclude inode flag */
 			fs->super->s_feature_compat &=
 				~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
@@ -292,7 +302,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 		retval = ext2fs_read_ind_block(fs, dindir_blk, dindir_buf);
 		if (retval)
 			goto out_free;
-	} else {
+	} else if (create) {
 		blk_t goal = sb->s_first_data_block + fs->desc_blocks +
 			sb->s_reserved_gdt_blocks + 2 +
 			fs->inode_blocks_per_group;
@@ -339,7 +349,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 				retval = ext2fs_read_ind_block(fs, indir_blk, indir_buf);
 				if (retval)
 					goto out_dindir;
-			} else {
+			} else if (create) {
 				retval = ext2fs_alloc_block(fs, dindir_blk, (char *)indir_buf, &indir_blk);
 				if (retval)
 					goto out_dindir;
@@ -356,7 +366,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 			continue;
 		/* read/alloc exclude bitmap block */
 		data_blk = indir_buf[indir_off];
-		if (!data_blk) {
+		if (!data_blk && create) {
 			/* allocate exclude bitmap block */
 			retval = ext2fs_alloc_block(fs, gd->bg_block_bitmap,
 					(char *)data_buf, &data_blk);
@@ -368,7 +378,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int reset)
 			printf("allocated exclude bitmap block %u\n", data_blk);
 #endif
 			indir_dirty = inode_dirty = 1;
-		} else if (reset) {
+		} else if (data_blk && reset) {
 			/* reset exclude bitmap block */
 #ifdef EXCLUDE_INO_DEBUG
 			printf("reading exclude bitmap block %u\n", data_blk);
@@ -436,6 +446,8 @@ out_inode:
 		retval2 = ext2fs_write_new_inode(fs, EXT2_EXCLUDE_INO, &inode);
 		if (!retval)
 			retval = retval2;
+		/* need to write out block bitmaps and group descriptors */
+		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 	}
 	if (gdt_dirty) {
 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;

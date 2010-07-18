@@ -398,7 +398,7 @@ int ext2fs_big_journal_size(int factor, __u64 blocks)
 {
 	int mega_blocks = blocks >> 20;
 	if (!mega_blocks)
-		return -1;
+		return ext2fs_default_journal_size(blocks);
 
 	if (mega_blocks < factor)
 		/* 32K/1M = 1/32 of filesystem size */
@@ -571,9 +571,6 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
 	       sizeof(fs->super->s_journal_uuid));
 	fs->super->s_feature_compat |= EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
-	ext2fs_check_journal_size(fs);
-#endif
 	ext2fs_mark_super_dirty(fs);
 	return 0;
 errout:

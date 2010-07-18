@@ -646,7 +646,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 	if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
-		retval = ext2fs_create_exclude_inode(fs, 1);
+		retval = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
 		if (retval) {
 			com_err(program_name, retval,
 					_("while creating exclude inode"));
@@ -662,7 +662,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		if (sb->s_feature_compat & 
 				EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
 			/* reset exclude bitmap blocks */
-			retval = ext2fs_create_exclude_inode(fs, 1);
+			retval = ext2fs_create_exclude_inode(fs, EXCLUDE_RESET);
 			if (retval)
 				sb->s_feature_compat &=
 					~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
@@ -694,7 +694,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 				"'has_snapshot' flag.\n"));
 
 		/* allocate/reset exclude bitmap blocks */
-		retval = ext2fs_create_exclude_inode(fs, 1);
+		retval = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
 		if (!retval)
 			sb->s_feature_compat |=
 				EXT2_FEATURE_COMPAT_EXCLUDE_INODE;

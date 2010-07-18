@@ -443,7 +443,7 @@ void check_exclude_inode(e2fsck_t ctx)
 	ext2_filsys fs = ctx->fs;
 	struct ext2_inode inode;
 	struct problem_context	pctx;
-	int		i;
+	int		i, flags = 0;
 	blk_t		blk;
 	errcode_t	retval;
 
@@ -520,11 +520,13 @@ void check_exclude_inode(e2fsck_t ctx)
 		return;
 	}
 
+	if (!(ctx->options & E2F_OPT_READONLY))
+		flags = EXCLUDE_ALLOC;
 	/*
 	 * create exclude inode and/or allocate missing exclude bitmap blocks.
 	 */
 	clear_problem_context(&pctx);
-	pctx.errcode = ext2fs_create_exclude_inode(fs, 0);
+	pctx.errcode = ext2fs_create_exclude_inode(fs, flags);
 	if (pctx.errcode &&
 			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
 		memset(&inode, 0, sizeof(inode));

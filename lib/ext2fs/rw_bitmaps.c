@@ -77,6 +77,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		do_exclude = 0;
 
 	if (do_exclude && !fs->exclude_blks) {
+		/* read exclude_blks from exclude inode */
 		retval = ext2fs_create_exclude_inode(fs, 0);
 		if (retval)
 			return retval;
@@ -248,6 +249,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		do_exclude = 0;
 
 	if (do_exclude && !fs->exclude_blks) {
+		/* read exclude_blks from exclude inode */
 		retval = ext2fs_create_exclude_inode(fs, 0);
 		if (retval)
 			return retval;

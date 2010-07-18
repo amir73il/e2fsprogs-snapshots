@@ -2082,7 +2082,7 @@ int main (int argc, char *argv[])
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
 		if (fs->super->s_feature_compat &
 		    EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
-			retval = ext2fs_create_exclude_inode(fs, 1);
+			retval = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
 			if (retval) {
 				com_err("ext2fs_create_exclude_inode", retval,
 				_("while reserving blocks for exclude bitmap"));

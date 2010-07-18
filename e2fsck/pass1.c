@@ -1129,7 +1129,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		save_bmap = fs->block_map;
 		fs->block_map = ctx->block_found_map;
 		clear_problem_context(&pctx);
-		pctx.errcode = ext2fs_create_exclude_inode(fs, 1);
+		pctx.errcode = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
 		if (pctx.errcode &&
 			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
 			memset(&inode, 0, sizeof(inode));
