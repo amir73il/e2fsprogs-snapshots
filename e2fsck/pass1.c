@@ -59,6 +59,8 @@
 	(inode)->i_blocks
 #define ext2fs_file_acl_block(inode) \
 	(inode)->i_file_acl
+#define ext2fs_fast_mark_block_bitmap2(map, blk) \
+	ext2fs_fast_mark_block_bitmap(map, blk)
 
 static int process_block(ext2_filsys fs, blk_t	*blocknr,
 			 e2_blkcnt_t blockcnt, blk_t ref_blk,
@@ -2283,7 +2285,7 @@ static int process_block(ext2_filsys fs,
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* mark snapshot file blocks excluded */
 	if (p->snapfile && ctx->block_excluded_map)
-		ext2fs_fast_mark_block_bitmap(ctx->block_excluded_map, blk);
+		ext2fs_fast_mark_block_bitmap2(ctx->block_excluded_map, blk);
 #endif
 	p->num_blocks++;
 	if (blockcnt >= 0)
