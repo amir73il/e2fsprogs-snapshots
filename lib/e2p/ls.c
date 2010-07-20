@@ -325,7 +325,6 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
 	if (sb->s_last_orphan)
 		fprintf(f, "First orphan inode:       %u\n",
 			sb->s_last_orphan);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 	if (sb->s_snapshot_inum) {
 		fprintf(f, "Snapshot inode:       %u\n",
 			sb->s_snapshot_inum);
@@ -337,7 +336,6 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
 	if (sb->s_snapshot_list)
 		fprintf(f, "Snapshot list first inode:       %u\n",
 			sb->s_snapshot_list);
-#endif
 	if ((sb->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX) ||
 	    sb->s_def_hash_version)
 		fprintf(f, "Default directory hash:   %s\n",
