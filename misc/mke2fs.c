@@ -961,13 +961,10 @@ static char **parse_fs_type(const char *fs_type,
 		ext_type = "ext2";
 	else if (!strcmp(program_name, "mke3fs"))
 		ext_type = "ext3";
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
-	/* If called as mkfs.next3, create exclude inode */
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 	else if (!strcmp(program_name, "mkfs.next3") ||
-		!strcmp(program_name, "mkn3fs")) {
+		!strcmp(program_name, "mkn3fs"))
 		ext_type = "ext3";
-		edit_feature("exclude_inode", &fs_param->s_feature_compat);
-	}
 #endif
 	else if (progname) {
 		ext_type = strrchr(progname, '/');
@@ -1185,10 +1182,18 @@ static void PRS(int argc, char *argv[])
 			journal_size = -1;
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
 		
-		/* If called as mkfs.next3, create a big journal */
+		/* If called as mkfs.next3: */
 		if (!strcmp(program_name, "mkfs.next3") ||
-		    !strcmp(program_name, "mkn3fs"))
+		    !strcmp(program_name, "mkn3fs")) {
+			/* 1. create a big journal */
 			journal_size = -NEXT3_MAX_COW_CREDITS;
+			/* 2. use system page size as block size */
+			blocksize = sys_page_size;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+			/* 3. create exclude inode */
+			edit_feature("exclude_inode", &fs_param.s_feature_compat);
+#endif
+		}
 #endif
 	}
 
