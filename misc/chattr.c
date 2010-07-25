@@ -55,6 +55,10 @@
 #include "nls-enable.h"
 
 static const char * program_name = "chattr";
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+
+static int chsnap;
+#endif
 
 static int add;
 static int rem;
@@ -82,11 +86,12 @@ static unsigned long sf;
 static void usage(void)
 {
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
-	fprintf(stderr,
+	fprintf(stderr, chsnap ?
+		_("Usage: %s -X [-+=let] files...\n") :
 		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
 		program_name);
 	fprintf(stderr,
-		_("Usage: %s -X [-+=Snapshot] files...\n"),
+		_("Usage: %s -X [-+=Snt] files...\n"),
 		program_name);
 #else
 	fprintf(stderr,
@@ -101,7 +106,6 @@ struct flags_char {
 	char 		optchar;
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 static const struct flags_char ext2_flags_array[] = {
 	{ EXT2_NOATIME_FL, 'A' },
 	{ EXT2_SYNC_FL, 'S' },
@@ -116,42 +120,32 @@ static const struct flags_char ext2_flags_array[] = {
 	{ EXT2_UNRM_FL, 'u' },
 	{ EXT2_NOTAIL_FL, 't' },
 	{ EXT2_TOPDIR_FL, 'T' },
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	{ EXT4_SNAPFILE_FL, 'x' },
+#endif
 	{ 0, 0 }
 };
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 static const struct flags_char *flags_array = ext2_flags_array;
 
+/* Traditional snapshot flags */
 static struct flags_char snapshot_flags_array[] = {
-	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
-	{ NEXT3_SNAPFILE_ENABLED_FL, 'n' },
-	{ NEXT3_SNAPFILE_ACTIVE_FL, 'a' },
-	{ NEXT3_SNAPFILE_INUSE_FL, 'p' },
-	{ NEXT3_SNAPFILE_DELETED_FL, 's' },
-	{ NEXT3_SNAPFILE_SHRUNK_FL, 'h' },
-	{ NEXT3_SNAPFILE_OPEN_FL, 'o' },
+	{ NEXT3_SNAPFILE_LIST_FL, 'l' },
+	{ NEXT3_SNAPFILE_ENABLED_FL, 'e' },
 	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
 	{ 0, 0 }
 };
-#else
-static const struct flags_char flags_array[] = {
-	{ EXT2_NOATIME_FL, 'A' },
-	{ EXT2_SYNC_FL, 'S' },
-	{ EXT2_DIRSYNC_FL, 'D' },
-	{ EXT2_APPEND_FL, 'a' },
-	{ EXT2_COMPR_FL, 'c' },
-	{ EXT2_NODUMP_FL, 'd' },
-	{ EXT4_EXTENTS_FL, 'e'},
-	{ EXT2_IMMUTABLE_FL, 'i' },
-	{ EXT3_JOURNAL_DATA_FL, 'j' },
-	{ EXT2_SECRM_FL, 's' },
-	{ EXT2_UNRM_FL, 'u' },
-	{ EXT2_NOTAIL_FL, 't' },
-	{ EXT2_TOPDIR_FL, 'T' },
+
+/* Cool 'Snapshot' flags */
+static struct flags_char snapshot_X_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
+	{ NEXT3_SNAPFILE_ENABLED_FL, 'n' },
+	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
 	{ 0, 0 }
 };
-#endif
 
+#endif
 static unsigned long get_flag(char c)
 {
 	const struct flags_char *fp;
@@ -176,7 +170,7 @@ static int decode_arg (int * i, int argc, char ** argv)
 		for (p = &argv[*i][1]; *p; p++) {
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 			if (*p == 'X') {
-				flags_array = snapshot_flags_array;
+				flags_array = snapshot_X_flags_array;
 				continue;
 			}
 #endif
@@ -352,6 +346,13 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+	i = strlen(program_name);
+	if (i >= 6 && !strcmp(program_name + i - 6, "chsnap")) {
+		flags_array = snapshot_flags_array;
+		chsnap = 1;
+	}
+#endif
 	i = 1;
 	while (i < argc && !end_arg) {
 		/* '--' arg should end option processing */

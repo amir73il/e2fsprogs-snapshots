@@ -53,7 +53,21 @@ static struct flags_name flags_array[] = {
 };
 
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+/* Traditional snapshot flags */
 static struct flags_name snapshot_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, "l", "on_List" },
+	{ NEXT3_SNAPFILE_ENABLED_FL, "e", "Enabled" },
+	{ NEXT3_SNAPFILE_ACTIVE_FL, "a", "Active" },
+	{ NEXT3_SNAPFILE_INUSE_FL, "i", "Inuse_by_previous" },
+	{ NEXT3_SNAPFILE_DELETED_FL, "d", "Deleted" },
+	{ NEXT3_SNAPFILE_SHRUNK_FL, "s", "Shrunk" },
+	{ NEXT3_SNAPFILE_OPEN_FL, "m", "Mounted" },
+	{ NEXT3_SNAPFILE_TAGGED_FL, "t", "Tagged" },
+	{ 0, NULL, NULL }
+};
+
+/* Cool 'Snapshot' flags */
+static struct flags_name snapshot_X_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },
 	{ NEXT3_SNAPFILE_ENABLED_FL, "n", "eNabled" },
 	{ NEXT3_SNAPFILE_ACTIVE_FL, "a", "Active" },
@@ -69,8 +83,10 @@ static struct flags_name snapshot_flags_array[] = {
 void print_flags (FILE * f, unsigned long flags, unsigned options)
 {
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
-	struct flags_name *array = ((options & PFOPT_SNAPSHOT) ?
-			snapshot_flags_array : flags_array);
+	struct flags_name *array = ((options & PFOPT_SNAPSHOT_X) ?
+			snapshot_X_flags_array :
+			((options & PFOPT_SNAPSHOT) ?
+			 snapshot_flags_array : flags_array));
 #endif
 	int long_opt = (options & PFOPT_LONG);
 	struct flags_name *fp;

@@ -174,6 +174,10 @@ int main (int argc, char ** argv)
 	if (argc && *argv)
 		program_name = *argv;
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+	i = strlen(program_name);
+	if (i >= 6 && !strcmp(program_name + i - 6, "lssnap"))
+		pf_options |= PFOPT_SNAPSHOT;
+
 	while ((c = getopt (argc, argv, "XRVadlv")) != EOF)
 #else
 	while ((c = getopt (argc, argv, "RVadlv")) != EOF)
@@ -182,7 +186,7 @@ int main (int argc, char ** argv)
 		{
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 			case 'X':
-				pf_options |= PFOPT_SNAPSHOT;
+				pf_options |= PFOPT_SNAPSHOT_X;
 				break;
 #endif
 			case 'R':
