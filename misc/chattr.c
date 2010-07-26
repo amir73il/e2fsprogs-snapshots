@@ -87,11 +87,11 @@ static void usage(void)
 {
 #ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 	fprintf(stderr, chsnap ?
-		_("Usage: %s -X [-+=let] files...\n") :
+		_("Usage: %s [-+=let] snapshot files...\n") :
 		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
 		program_name);
 	fprintf(stderr,
-		_("Usage: %s -X [-+=Snt] files...\n"),
+		_("Usage: %s -X [-+=Snt] snapshot files...\n"),
 		program_name);
 #else
 	fprintf(stderr,
@@ -106,7 +106,11 @@ struct flags_char {
 	char 		optchar;
 };
 
+#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
 static const struct flags_char ext2_flags_array[] = {
+#else
+static const struct flags_char flags_array[] = {
+#endif
 	{ EXT2_NOATIME_FL, 'A' },
 	{ EXT2_SYNC_FL, 'S' },
 	{ EXT2_DIRSYNC_FL, 'D' },
