@@ -1,0 +1,105 @@
+config NEXT3_FS_SNAPSHOT
+	bool "Next3 snapshot awareness"
+	help
+	  There are no snapshot COW operations during offline processing,
+	  only restrictions on changing a file system with snapshots offline.
+
+config NEXT3_FS_SNAPSHOT_ON_DISK
+	bool "Next3 on-disk format changes"
+	help
+	  Next3 uses a few reserved fields and flags in the Ext2 super block,
+	  and inode structs.
+	  Next3 defines the compatible feature 'exclude_inode', meaning that
+	  the special exclude inode was allocated.
+	  Next3 defines the read-only compatible features 'has_snapshot', meaning
+	  that the file system contains snapshots.
+
+config NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+	bool "Create a big journal for Next3"
+	help
+	  Next3 transactions reserve up to 24 times more credits than Ext3
+	  transactions for the same operation.  On mke2fs and tune2fs, if the
+	  '-J big' option is used to create a journal, increase the default
+	  journal size by a factor of 24.
+
+config NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+	bool "Create/check exclude inode for Next3"
+	help
+	  The exclude inode owns all the exclude bitmap blocks.
+	  It is pre-allocated by 'mke2fs/tune2fs -O exclude_inode'.
+	  It is extended by resize2fs when block groups are added.
+	  Fsck checks that all exclude inode blocks are allocated.
+
+config NEXT3_FS_SNAPSHOT_CTL
+	bool "Next3 snapshot control with chattr/lsattr -X"
+	help
+	  Set/clear snapshots parent directory with chattr +/-x.
+	  Take/delete snapshot with chattr -X +/-S.
+	  Enable/disable snapshot with chattr -X +/-n.
+	  View snapshot status with lsattr -X.
+
+config NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+	bool "Avoid offline modifications to a file system with snapshots"
+	help
+	  Next3 sets the read-only compatible feature 'has_snapshot',
+	  so the file system could be mounted with Ext3 only in read-only mode
+	  to protect the snapshots.
+	  Fsck displays a warning about possible corruption of the snapshots
+	  in interactive mode and avoids freeing blocks in preen mode.
+
+config NEXT3_FS_SNAPSHOT_CLEANUP
+	bool "Cleanup Next3 snapshot list when removing has_snapshot feature"
+	help
+	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
+	  Snapshot inodes are chained on a list starting at the super block.
+	  Delete all snapshot inodes on the list and reset exclude bitmap.
+
+config NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+	bool "Check Next3 exclude bitmap on fsck"
+	help
+	  Excluding blocks is done by setting their bit in the exclude bitmap.
+	  There is one exclude bitmap block per block group.  The exclude
+	  bitmap blocks are owned by the special exclude inode.
+	  Fsck checks that all (and only) snapshot file blocks are excluded.
+
+config NEXT3_FS_SNAPSHOT_CHECK_LIST
+	bool "Check Next3 snapshot list on fsck"
+	help
+	  Check that all inodes on snapshot list are valid snapshots and
+	  prompt to terminate list when bad inode is found.
+
+config NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+	bool "Delete all snapshots on fsck -x"
+	help
+	  On fsck -x or if the 'fix_snapshot' flag is set, prompt to delete
+	  all snapshot inodes and reset exclude bitmap.
+
+config NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+	bool "Map maximum filesystem size with a single snapshot file"
+	help
+	  To map 2^32 logical blocks, 4 triple indirect blocks are used instead
+	  of just one.  The extra 3 triple indirect blocks are stored in-place
+	  of direct blocks, which are not in use by snapshot files.
+	  Snapshots cannot be enabled on filesytem with block size < 4K.
+
+config NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
+	bool "Dump Next3 message buffer on fsck"
+	help
+	  Next3 error messages are recorded in a 2K message buffer after the
+	  journal super block.  On journal recovery, the journal message buffer
+	  is copied to the file system message buffer.  On fsck, if the message
+	  buffer is not empty, the recorded messages are printed to stdout and
+	  the buffer is cleared.
+	  Next3 supports only block size of 4K, so there is always 2K of free
+	  space for the message buffer after the 1K super block.
+
+config NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+	bool "Migrate old to new on-disk format"
+	help
+	  Detect old 'has_snapshot' feature on ext2fs_open(), migrate snapshot
+	  fields and flags and set new 'has_snapshot' feature.
+	  Detect old 'exclude_inode' feature on create/check_exclude_inode(),
+	  copy old exclude inode to new exclude inode location and set the new
+	  'exclude_inode' feature.
+
+
