@@ -86,7 +86,7 @@ static void adjust_extattr_refcount(e2fsck_t ctx, ext2_refcount_t refcount,
 struct process_block_struct {
 	ext2_ino_t	ino;
 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 			fragmented:1, compressed:1, bbcheck:1, snapfile:1;
 #else
 				fragmented:1, compressed:1, bbcheck:1;
@@ -592,7 +592,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags |= E2F_FLAG_ABORT;
 		return;
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (sb->s_feature_compat & EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
 		pctx.errcode = ext2fs_allocate_block_bitmap(fs,
 				_("excluded block map"),
@@ -868,7 +868,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 			if (ino == EXT2_BOOT_LOADER_INO) {
 				if (LINUX_S_ISDIR(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 			} else if (ino == EXT2_RESIZE_INO || ino == EXT2_EXCLUDE_INO) {
 #else
 			} else if (ino == EXT2_RESIZE_INO) {
@@ -1053,7 +1053,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		    (inode->i_block[EXT2_IND_BLOCK] ||
 		     inode->i_block[EXT2_DIND_BLOCK] ||
 		     inode->i_block[EXT2_TIND_BLOCK] ||
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 		     (inode->i_flags & EXT4_SNAPFILE_FL) ||
 #endif
 		     ext2fs_file_acl_block(inode))) {
@@ -1124,7 +1124,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	if (ctx->flags & E2F_FLAG_EXCLUDE_INODE) {
 		ext2fs_block_bitmap save_bmap;
 
@@ -1649,7 +1649,7 @@ void e2fsck_clear_inode(e2fsck_t ctx, ext2_ino_t ino,
 			struct ext2_inode *inode, int restart_flag,
 			const char *source)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 	/* don't clear inode with blocks when preening volume with active snapshot */
 	if ((ctx->fs->super->s_feature_ro_compat &
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
@@ -1882,7 +1882,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	pb.previous_block = 0;
 	pb.is_dir = LINUX_S_ISDIR(inode->i_mode);
 	pb.is_reg = LINUX_S_ISREG(inode->i_mode);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	pb.snapfile = (pb.is_reg && (inode->i_flags & EXT4_SNAPFILE_FL));
 #endif
 	pb.max_blocks = 1 << (31 - fs->super->s_log_block_size);
@@ -1892,7 +1892,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	pctx->ino = ino;
 	pctx->errcode = 0;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 	if (pb.snapfile && (ctx->flags & E2F_FLAG_CLEAR_SNAPSHOTS)) {
 		/* discarding all snapshot files */
 		e2fsck_clear_inode(ctx, ino, inode, E2F_FLAG_RESTART,
@@ -1993,7 +1993,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 		}
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 	if ((!(fs->super->s_feature_ro_compat &
 	       EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
 	     /* snapshot file always supports the 'huge_file' flag */
@@ -2031,7 +2031,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize))
 			bad_size = 3;
 		else if (!(extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) &&
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 			 !(pb.is_reg && (inode->i_flags & EXT4_SNAPFILE_FL)) &&
 #endif
 			 size > ext2_max_sizes[fs->super->s_log_block_size])
@@ -2059,7 +2059,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
 	    (inode->i_size_high || inode->i_size & 0x80000000UL))
 		ctx->large_files++;
 	if ((pb.num_blocks != ext2fs_inode_i_blocks(fs, inode)) ||
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 	    (((fs->super->s_feature_ro_compat &
 	       EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
 	      /* snapshot file always supports the 'huge_file' flag */
@@ -2282,7 +2282,7 @@ static int process_block(ext2_filsys fs,
 			mark_block_used(ctx, blk);
 	} else
 		mark_block_used(ctx, blk);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	/* mark snapshot file blocks excluded */
 	if (p->snapfile && ctx->block_excluded_map)
 		ext2fs_fast_mark_block_bitmap2(ctx->block_excluded_map, blk);

@@ -199,7 +199,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 		goto cleanup;
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	/* Migrate super from old to new Next3 on-disk format */
 	if ((fs->super->s_feature_ro_compat &
 			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD) &&

@@ -44,7 +44,7 @@
 #include "ext2fs.h"
 #include "e2image.h"
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block,
 		int do_exclude)
 #else
@@ -56,7 +56,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 	int		block_nbytes, inode_nbytes;
 	unsigned int	nbits;
 	errcode_t	retval;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	char 		*block_buf, *inode_buf, *exclude_buf;
 #else
 	char 		*block_buf, *inode_buf;
@@ -71,7 +71,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 	if (!(fs->flags & EXT2_FLAG_RW))
 		return EXT2_ET_RO_FILSYS;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
 				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
@@ -96,7 +96,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 			return retval;
 		memset(block_buf, 0xff, fs->blocksize);
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (do_exclude) {
 		block_nbytes = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
 		retval = ext2fs_get_mem(fs->blocksize, &exclude_buf);
@@ -115,7 +115,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 	}
 
 	for (i = 0; i < fs->group_desc_count; i++) {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		if (!do_block && !do_exclude)
 #else
 		if (!do_block)
@@ -126,7 +126,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		    )
 			goto skip_this_block_bitmap;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		if (do_block)
 			retval = ext2fs_get_block_bitmap_range2(fs->block_map,
 					blk_itr, block_nbytes << 3, block_buf);
@@ -143,7 +143,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		if (retval)
 			return retval;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		if (do_block && i == fs->group_desc_count - 1) {
 #else
 		if (i == fs->group_desc_count - 1) {
@@ -157,7 +157,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 					ext2fs_set_bit(j, block_buf);
 		}
 		blk = ext2fs_block_bitmap_loc(fs, i);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		if (do_block && blk) {
 #else
 		if (blk) {
@@ -167,7 +167,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 			if (retval)
 				return EXT2_ET_BLOCK_BITMAP_WRITE;
 		}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		if (do_exclude && (blk = fs->exclude_blks[i])) {
 			retval = io_channel_write_blk64(fs->io, blk, 1,
 						      exclude_buf);
@@ -213,7 +213,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 	return 0;
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block,
 		int do_exclude)
 #else
@@ -221,7 +221,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 #endif
 {
 	dgrp_t i;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	char *block_bitmap = 0, *inode_bitmap = 0, *exclude_bitmap = 0;
 #else
 	char *block_bitmap = 0, *inode_bitmap = 0;
@@ -243,7 +243,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 
 	fs->write_bitmaps = ext2fs_write_bitmaps;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!EXT2_HAS_COMPAT_FEATURE(fs->super,
 				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
 		do_exclude = 0;
@@ -275,7 +275,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 					(unsigned) block_nbytes, &block_bitmap);
 		if (retval)
 			goto cleanup;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	}
 	if (do_exclude) {
 		if (fs->exclude_map)
@@ -335,7 +335,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		blk_cnt = (blk64_t)EXT2_BLOCKS_PER_GROUP(fs->super) *
 			fs->group_desc_count;
 		while (block_nbytes > 0) {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 			if (do_exclude) {
 				retval = EXT2_ET_BLOCK_BITMAP_READ;
 				goto cleanup;
@@ -381,7 +381,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 					       blk_itr, cnt, block_bitmap);
 			if (retval)
 				goto cleanup;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 		}
 		if (exclude_bitmap) {
 			blk = fs->exclude_blks[i];
@@ -438,7 +438,7 @@ success_cleanup:
 		ext2fs_free_mem(&inode_bitmap);
 	if (block_bitmap)
 		ext2fs_free_mem(&block_bitmap);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (exclude_bitmap)
 		ext2fs_free_mem(&exclude_bitmap);
 #endif
@@ -457,7 +457,7 @@ cleanup:
 		ext2fs_free_mem(&inode_bitmap);
 	if (block_bitmap)
 		ext2fs_free_mem(&block_bitmap);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (exclude_bitmap)
 		ext2fs_free_mem(&exclude_bitmap);
 #endif
@@ -468,7 +468,7 @@ cleanup:
 
 errcode_t ext2fs_read_inode_bitmap(ext2_filsys fs)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return read_bitmaps(fs, 1, 0, 0);
 #else
 	return read_bitmaps(fs, 1, 0);
@@ -477,14 +477,14 @@ errcode_t ext2fs_read_inode_bitmap(ext2_filsys fs)
 
 errcode_t ext2fs_read_block_bitmap(ext2_filsys fs)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return read_bitmaps(fs, 0, 1, 0);
 #else
 	return read_bitmaps(fs, 0, 1);
 #endif
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 errcode_t ext2fs_read_exclude_bitmap (ext2_filsys fs)
 {
 	return read_bitmaps(fs, 0, 0, 1);
@@ -493,7 +493,7 @@ errcode_t ext2fs_read_exclude_bitmap (ext2_filsys fs)
 #endif
 errcode_t ext2fs_write_inode_bitmap(ext2_filsys fs)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return write_bitmaps(fs, 1, 0, 0);
 #else
 	return write_bitmaps(fs, 1, 0);
@@ -502,14 +502,14 @@ errcode_t ext2fs_write_inode_bitmap(ext2_filsys fs)
 
 errcode_t ext2fs_write_block_bitmap (ext2_filsys fs)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return write_bitmaps(fs, 0, 1, 0);
 #else
 	return write_bitmaps(fs, 0, 1);
 #endif
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 errcode_t ext2fs_write_exclude_bitmap (ext2_filsys fs)
 {
 	return write_bitmaps(fs, 0, 0, 1);
@@ -518,14 +518,14 @@ errcode_t ext2fs_write_exclude_bitmap (ext2_filsys fs)
 #endif
 errcode_t ext2fs_read_bitmaps(ext2_filsys fs)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (fs->inode_map && fs->block_map && fs->exclude_map)
 #else
 	if (fs->inode_map && fs->block_map)
 #endif
 		return 0;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return read_bitmaps(fs, !fs->inode_map, !fs->block_map, !fs->exclude_map);
 #else
 	return read_bitmaps(fs, !fs->inode_map, !fs->block_map);
@@ -536,18 +536,18 @@ errcode_t ext2fs_write_bitmaps(ext2_filsys fs)
 {
 	int do_inode = fs->inode_map && ext2fs_test_ib_dirty(fs);
 	int do_block = fs->block_map && ext2fs_test_bb_dirty(fs);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	int do_exclude = fs->exclude_map && ext2fs_test_exclude_dirty(fs);
 #endif
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (!do_inode && !do_block && !do_exclude)
 #else
 	if (!do_inode && !do_block)
 #endif
 		return 0;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	return write_bitmaps(fs, do_inode, do_block, do_exclude);
 #else
 	return write_bitmaps(fs, do_inode, do_block);

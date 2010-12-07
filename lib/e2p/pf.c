@@ -46,13 +46,13 @@ static struct flags_name flags_array[] = {
 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
 	{ EXT4_EXTENTS_FL, "e", "Extents" },
 	{ EXT4_HUGE_FILE_FL, "h", "Huge_file" },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	{ EXT4_SNAPFILE_FL, "x", "Snapshot_File" },
 #endif
 	{ 0, NULL, NULL }
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 /* Traditional snapshot flags */
 static struct flags_name snapshot_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, "l", "on_List" },
@@ -82,7 +82,7 @@ static struct flags_name snapshot_X_flags_array[] = {
 #endif
 void print_flags (FILE * f, unsigned long flags, unsigned options)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	struct flags_name *array = ((options & PFOPT_SNAPSHOT_X) ?
 			snapshot_X_flags_array :
 			((options & PFOPT_SNAPSHOT) ?
@@ -92,7 +92,7 @@ void print_flags (FILE * f, unsigned long flags, unsigned options)
 	struct flags_name *fp;
 	int	first = 1;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	for (fp = array; fp->flag != 0; fp++) {
 #else
 	for (fp = flags_array; fp->flag != 0; fp++) {

@@ -39,7 +39,7 @@ struct problem_context {
 #define PR_LATCH_TOOBIG	0x0080	/* Latch for file to big errors */
 #define PR_LATCH_OPTIMIZE_DIR 0x0090 /* Latch for optimize directories */
 #define PR_LATCH_BG_CHECKSUM 0x00A0  /* Latch for block group checksums */
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 #define PR_LATCH_XBITMAP 0x00B0 /* Latch for pass 5 exclude bitmap proc. */
 #endif
 
@@ -230,7 +230,7 @@ struct problem_context {
 /* Block group checksum (latch question) */
 #define PR_0_GDT_CSUM_LATCH			0x00003E
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /* Exclude_inode not enabled, but exclude inode is non-zero */
 #define PR_0_CLEAR_EXCLUDE_INODE		0x000100
 
@@ -238,12 +238,12 @@ struct problem_context {
 #define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 /* Bas snapshot on list */
 #define PR_0_BAD_SNAPSHOT			0x000102
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 /* Corrupted snapshot */
 #define PR_0_FIX_SNAPSHOT			0x000103
 
@@ -538,7 +538,7 @@ struct problem_context {
 /* Extent node header invalid */
 #define PR_1_EXTENT_HEADER_INVALID	0x01005F
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /* Exclude inode failed */
 #define PR_1_EXCLUDE_INODE_CREATE	0x010100
 
@@ -1006,7 +1006,7 @@ struct problem_context {
 /* Inode in use but group is marked INODE_UNINIT */
 #define PR_5_INODE_UNINIT		0x050019
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 /* Exclude bitmap differences header */
 #define PR_5_EXCLUDE_BITMAP_HEADER	0x050100
 

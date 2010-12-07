@@ -55,7 +55,7 @@
 #include "nls-enable.h"
 
 static const char * program_name = "chattr";
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 
 static int chsnap;
 #endif
@@ -85,7 +85,7 @@ static unsigned long sf;
 
 static void usage(void)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	fprintf(stderr, chsnap ?
 		_("Usage: %s [-+=let] snapshot files...\n") :
 		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
@@ -106,7 +106,7 @@ struct flags_char {
 	char 		optchar;
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 static const struct flags_char ext2_flags_array[] = {
 #else
 static const struct flags_char flags_array[] = {
@@ -124,13 +124,13 @@ static const struct flags_char flags_array[] = {
 	{ EXT2_UNRM_FL, 'u' },
 	{ EXT2_NOTAIL_FL, 't' },
 	{ EXT2_TOPDIR_FL, 'T' },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	{ EXT4_SNAPFILE_FL, 'x' },
 #endif
 	{ 0, 0 }
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 static const struct flags_char *flags_array = ext2_flags_array;
 
 /* Traditional snapshot flags */
@@ -172,7 +172,7 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 			if (*p == 'X') {
 				flags_array = snapshot_X_flags_array;
 				continue;
@@ -350,7 +350,7 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	i = strlen(program_name);
 	if (i >= 6 && !strcmp(program_name + i - 6, "chsnap")) {
 		flags_array = snapshot_flags_array;

@@ -812,7 +812,7 @@ void e2fsck_rehash_directories(e2fsck_t ctx)
 	int			cur, max, all_dirs, dir_index, first = 1;
 
 	init_resource_track(&rtrack, ctx->fs->io);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 
  	/* never rehash directories when scanning volume with active snapshot */
  	if ((ctx->fs->super->s_feature_ro_compat &

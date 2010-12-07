@@ -388,7 +388,7 @@ int ext2fs_default_journal_size(__u64 blocks)
 	return 32768;
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 /* 
  * Big journal is up to X times bigger than the default journal
  * to accomodate snapshot COW credits in transactions.

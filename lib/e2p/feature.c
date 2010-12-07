@@ -39,7 +39,7 @@ static struct feature feature_list[] = {
 			"resize_inode" },
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_LAZY_BG,
 			"lazy_bg" },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE,
 			"exclude_inode" },
 #endif
@@ -58,7 +58,7 @@ static struct feature feature_list[] = {
 			"dir_nlink" },
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE,
 			"extra_isize" },
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
 			"has_snapshot" },
 #endif

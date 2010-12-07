@@ -14,7 +14,7 @@
 #include "problem.h"
 
 static void check_block_bitmaps(e2fsck_t ctx);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 static void check_exclude_bitmaps(e2fsck_t ctx);
 #endif
 static void check_inode_bitmaps(e2fsck_t ctx);
@@ -47,7 +47,7 @@ void e2fsck_pass5(e2fsck_t ctx)
 	check_block_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	check_exclude_bitmaps(ctx);
 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
 		return;
@@ -68,7 +68,7 @@ void e2fsck_pass5(e2fsck_t ctx)
 	ctx->inode_dir_map = 0;
 	ext2fs_free_block_bitmap(ctx->block_found_map);
 	ctx->block_found_map = 0;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (ctx->block_excluded_map)
 		ext2fs_free_block_bitmap(ctx->block_excluded_map);
 	ctx->block_excluded_map = 0;
@@ -95,7 +95,7 @@ static void print_bitmap_problem(e2fsck_t ctx, int problem,
 		else
 			problem = PR_5_BLOCK_RANGE_USED;
 		break;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	case PR_5_BLOCK_NOTEXCLUDED:
 		if (pctx->blk == pctx->blk2)
 			pctx->blk2 = 0;
@@ -320,7 +320,7 @@ redo_counts:
 	} else if (fixit == 0)
 		ext2fs_unmark_valid(fs);
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 	if (fs->super->s_flags & EXT2_FLAGS_IS_SNAPSHOT)
 		/* ignore free block counts in next3 snapshot image */
 		goto errout;
@@ -365,7 +365,7 @@ errout:
 	(sb)->s_blocks_count
 #define ext2fs_fast_test_block_bitmap2 ext2fs_fast_test_block_bitmap
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 static void check_exclude_bitmaps(e2fsck_t ctx)
 {
 	ext2_filsys fs = ctx->fs;

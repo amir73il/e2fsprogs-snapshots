@@ -155,7 +155,7 @@ struct resource_track {
 #define E2F_OPT_WRITECHECK	0x0200
 #define E2F_OPT_COMPRESS_DIRS	0x0400
 #define E2F_OPT_FRAGCHECK	0x0800
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 #define E2F_OPT_FIX_SNAPSHOT	0x1000
 #endif
 
@@ -180,10 +180,10 @@ struct resource_track {
 #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
 #define E2F_FLAG_TIME_INSANE	0x2000 /* Time is insane */
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 #define E2F_FLAG_EXCLUDE_INODE	0x4000 /* Request to recreate exclude inode */
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 #define E2F_FLAG_CLEAR_SNAPSHOTS	0x8000 /* Clear all snapshot inodes */
 #endif
 
@@ -242,7 +242,7 @@ struct e2fsck_struct {
 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
 
 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	ext2fs_block_bitmap block_excluded_map; /* Blocks which are excluded */
 #endif
 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
@@ -487,10 +487,10 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
 void check_super_block(e2fsck_t ctx);
 int check_backup_super_block(e2fsck_t ctx);
 void check_resize_inode(e2fsck_t ctx);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 void check_exclude_inode(e2fsck_t ctx);
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 void check_snapshots(e2fsck_t ctx);
 #endif
 

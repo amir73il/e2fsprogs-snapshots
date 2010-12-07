@@ -26,6 +26,18 @@
  * Define EXT2FS_DEBUG to produce debug messages
  */
 #undef EXT2FS_DEBUG
+#define EXT2FS_SNAPSHOT_ON_DISK
+#define EXT2FS_SNAPSHOT_BIG_JOURNAL
+#define EXT2FS_SNAPSHOT_EXCLUDE_INODE
+#define EXT2FS_SNAPSHOT_CTL
+#define EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+#define EXT2FS_SNAPSHOT_CLEANUP
+#define EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+#define EXT2FS_SNAPSHOT_CHECK_LIST
+#define EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+#define EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
+#define EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+#define EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files
@@ -51,7 +63,7 @@
 #define EXT2_RESIZE_INO		 7	/* Reserved group descriptors inode */
 #define EXT2_JOURNAL_INO	 8	/* Journal inode */
 #define EXT2_EXCLUDE_INO	 9	/* The "exclude" inode, for snapshots */
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 #define EXT2_EXCLUDE_INO_OLD	10	/* Old exclude inode */
 #endif
 
@@ -153,7 +165,7 @@ struct ext2_group_desc
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 #define bg_exclude_bitmap_old bg_reserved[0]	/* Old exclude bitmap cache */
 #define bg_cow_bitmap_old bg_reserved[1]	/* Old COW bitmap cache */
 
@@ -258,7 +270,7 @@ struct ext2_dx_countlimit {
 #define EXT2_DIND_BLOCK			(EXT2_IND_BLOCK + 1)
 #define EXT2_TIND_BLOCK			(EXT2_DIND_BLOCK + 1)
 #define EXT2_N_BLOCKS			(EXT2_TIND_BLOCK + 1)
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 /*
  * Snapshot files have different indirection mapping that can map up to 2^32
  * logical blocks, so they can cover the mapped filesystem block address space.
@@ -451,7 +463,7 @@ struct ext2_inode_large {
 #define i_size_high	i_dir_acl
 
 #if defined(__KERNEL__) || defined(__linux__)
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 #define i_next_snapshot	osd1.linux1.l_i_version
 #else
 #define i_reserved1	osd1.linux1.l_i_reserved1
@@ -625,7 +637,7 @@ struct ext2_super_block {
 	__u32   s_reserved[155];        /* Padding to the end of the block */
 };
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 /* old snapshot field positions */
 #define s_snapshot_list_old	s_reserved[151]	/* Old snapshot list head */
 #define s_snapshot_r_blocks_old	s_reserved[152] /* Old reserved for snapshot */
@@ -658,7 +670,7 @@ struct ext2_super_block {
  */
 #define EXT3_JNL_BACKUP_BLOCKS	1
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 /*
  * A Next3 'big' journal needs to accomodate extra snapshot COW credits.
  * Default journal size accomodates maximum possible COW credits.
@@ -690,7 +702,7 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
 #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 #define NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD	0x1000 /* Old big journal */
 #define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD	0x2000 /* Old exclude inode */
 #endif
@@ -703,7 +715,7 @@ struct ext2_super_block {
 #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
 #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
 #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 #define NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD 0x1000 /* Old has snapshots */
 #define NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT_OLD	0x2000 /* Old is snapshot */
 #define NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD 0x4000 /* Old fix snapshot */
@@ -723,7 +735,7 @@ struct ext2_super_block {
 
 #define EXT2_FEATURE_COMPAT_SUPP	0
 #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE)
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
 					 EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\

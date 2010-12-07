@@ -70,7 +70,7 @@ static int generation_opt;
 
 static void usage(void)
 {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	fprintf(stderr, _("Usage: %s [-XRVadlv] [files...]\n"), program_name);
 #else
 	fprintf(stderr, _("Usage: %s [-RVadlv] [files...]\n"), program_name);
@@ -173,7 +173,7 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 	i = strlen(program_name);
 	if (i >= 6 && !strcmp(program_name + i - 6, "lssnap"))
 		pf_options |= PFOPT_SNAPSHOT;
@@ -184,7 +184,7 @@ int main (int argc, char ** argv)
 #endif
 		switch (c)
 		{
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 			case 'X':
 				pf_options |= PFOPT_SNAPSHOT_X;
 				break;
@@ -202,7 +202,7 @@ int main (int argc, char ** argv)
 				dirs_opt = 1;
 				break;
 			case 'l':
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 				pf_options |= PFOPT_LONG;
 #else
 				pf_options = PFOPT_LONG;

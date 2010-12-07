@@ -229,7 +229,7 @@ static int release_orphan_inodes(e2fsck_t ctx)
 	struct problem_context pctx;
 	char *block_buf;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 	/* never release orphans when scanning volume with active snapshot */
 	if ((fs->super->s_feature_ro_compat &
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
@@ -431,7 +431,7 @@ cleanup:
 
  }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Check the exclude inode to make sure it is sane.  We check both for
  * the case where exclude bitmap is not enabled (in which case the
@@ -449,7 +449,7 @@ void check_exclude_inode(e2fsck_t ctx)
 
 	clear_problem_context(&pctx);
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	/* Migrate from old to new Next3 on-disk format */
 	if (fs->super->s_feature_compat &
 	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
@@ -537,7 +537,7 @@ void check_exclude_inode(e2fsck_t ctx)
 }
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 /*
  * Check that snapshot list contains valid snapshot files.
  * Returns the number of valid snapshots on list.
@@ -608,7 +608,7 @@ static int check_snapshot_list(e2fsck_t ctx)
 }
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 /*
  * This function checks if the file system has snapshots
  */
@@ -622,7 +622,7 @@ void check_snapshots(e2fsck_t ctx)
 		/* no snapshots */
 		return;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_FIX_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 	if ((ctx->options & E2F_OPT_FIX_SNAPSHOT) ||
 			(sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT)) {
 		/* corrupted snapshot need to be fixed */
@@ -648,7 +648,7 @@ void check_snapshots(e2fsck_t ctx)
 	}
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CHECK_LIST
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 	if (!check_snapshot_list(ctx))
 		/* no valid snapshots on list */
 		return;
@@ -704,7 +704,7 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
 	}
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
 /*
  * This function prints the message buffer at the end of super block.
  */
@@ -1148,7 +1148,7 @@ void check_super_block(e2fsck_t ctx)
 	 */
 	e2fsck_fix_dirhash_hint(ctx);
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_MESSAGE_BUFFER
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
 	/*
 	 * Print message buffer if necessary
 	 */

@@ -174,7 +174,8 @@ typedef struct ext2_file *ext2_file_t;
 #define EXT2_FLAG_NOFREE_ON_ERROR	0x10000
 #define EXT2_FLAG_64BITS		0x20000
 #define EXT2_FLAG_PRINT_PROGRESS	0x40000
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#define EXT2_FLAG_DIRECT_IO		0x80000
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 #define EXT2_FLAG_EXCLUDE_DIRTY		0x100000
 #endif
 
@@ -204,13 +205,13 @@ struct struct_ext2_filsys {
 	dgrp_t				group_desc_count;
 	unsigned long			desc_blocks;
 	struct opaque_ext2_group_desc *	group_desc;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	__u32 *				exclude_blks;
 #endif
 	int				inode_blocks_per_group;
 	ext2fs_inode_bitmap		inode_map;
 	ext2fs_block_bitmap		block_map;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	ext2fs_block_bitmap		exclude_map;
 #endif
 	/* XXX FIXME-64: not 64-bit safe, but not used? */
@@ -515,18 +516,33 @@ typedef struct ext2_icount *ext2_icount_t;
 /*
  * Features supported by this version of the library
  */
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
 					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
 					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 					 EXT2_FEATURE_COMPAT_EXCLUDE_INODE|\
-#endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
 					 NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD|\
-#endif
 					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
 					 EXT2_FEATURE_COMPAT_EXT_ATTR)
+#else
+#define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
+					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
+					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
+					 EXT2_FEATURE_COMPAT_EXCLUDE_INODE|\
+					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
+					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
+					 EXT2_FEATURE_COMPAT_EXT_ATTR)
+#endif
+#else
+#define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
+					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
+					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
+					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
+					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
+					 EXT2_FEATURE_COMPAT_EXT_ATTR)
+#endif
 
 /* This #ifdef is temporary until compression is fully supported */
 #ifdef ENABLE_COMPRESSION
@@ -551,15 +567,22 @@ typedef struct ext2_icount *ext2_icount_t;
 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
 					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
 #endif
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
 					 EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
-#endif
 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
 					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
+#else
+#define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\
+					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK|\
+					 EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE|\
+					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM)
+#endif
 
 /*
  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
@@ -667,12 +690,12 @@ extern errcode_t ext2fs_copy_bitmap(ext2fs_generic_bitmap src,
 				    ext2fs_generic_bitmap *dest);
 extern errcode_t ext2fs_write_inode_bitmap(ext2_filsys fs);
 extern errcode_t ext2fs_write_block_bitmap (ext2_filsys fs);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 extern errcode_t ext2fs_write_exclude_bitmap (ext2_filsys fs);
 #endif
 extern errcode_t ext2fs_read_inode_bitmap (ext2_filsys fs);
 extern errcode_t ext2fs_read_block_bitmap(ext2_filsys fs);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 extern errcode_t ext2fs_read_exclude_bitmap (ext2_filsys fs);
 #endif
 extern errcode_t ext2fs_allocate_block_bitmap(ext2_filsys fs,
@@ -1099,7 +1122,7 @@ extern errcode_t ext2fs_add_journal_device(ext2_filsys fs,
 extern errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size,
 					  int flags);
 extern int ext2fs_default_journal_size(__u64 blocks);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_BIG_JOURNAL
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 extern int ext2fs_big_journal_size(int factor, __u64 blocks);
 extern int ext2fs_check_journal_size(ext2_filsys fs);
 #endif
@@ -1147,7 +1170,7 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
 
 /* res_gdt.c */
 extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 extern errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags);
 
 /* exclude inode creation flags */
@@ -1347,7 +1370,7 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
 	fs->flags |= EXT2_FLAG_BB_DIRTY | EXT2_FLAG_CHANGED;
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 /*
  * Mark the exclude bitmap as dirty
  */
@@ -1373,7 +1396,7 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
 	return (fs->flags & EXT2_FLAG_BB_DIRTY);
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_BITMAP
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 /*
  * Check to see if a filesystem's exclude bitmap is dirty
  */

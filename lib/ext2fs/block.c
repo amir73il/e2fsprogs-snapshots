@@ -457,7 +457,7 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 	 * Iterate over normal data blocks
 	 */
 	for (i = 0; i < EXT2_NDIR_BLOCKS ; i++, ctx.bcount++) {
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 		if ((inode.i_flags & EXT4_SNAPFILE_FL) &&
 				LINUX_S_ISREG(inode.i_mode) &&
 				i < NEXT3_EXTRA_TIND_BLOCKS)
@@ -495,7 +495,7 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 		if (ret & BLOCK_ABORT)
 			goto abort_exit;
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 	if ((inode.i_flags & EXT4_SNAPFILE_FL) && LINUX_S_ISREG(inode.i_mode)) {
 		/* iterate snapshot file extra triple indirect blocks */
 		for (i = 0; i < NEXT3_EXTRA_TIND_BLOCKS; i++) {

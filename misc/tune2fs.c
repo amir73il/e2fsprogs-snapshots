@@ -118,7 +118,7 @@ static void usage(void)
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
@@ -128,8 +128,8 @@ static __u32 ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
-		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
@@ -141,7 +141,7 @@ static __u32 ok_features[3] = {
 static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
 #endif
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
@@ -151,8 +151,8 @@ static __u32 clear_ok_features[3] = {
 		EXT4_FEATURE_INCOMPAT_FLEX_BG,
 	/* R/O compat */
 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
-		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|\
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT|
 #endif
 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
 		EXT4_FEATURE_RO_COMPAT_DIR_NLINK|
@@ -296,7 +296,7 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
 	return 0;
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Remove a special inode from the filesystem:
  * - resize inode, @nlink = 0
@@ -335,7 +335,7 @@ static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino,
 }
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CLEANUP
+#ifdef EXT2FS_SNAPSHOT_CLEANUP
 /*
  * Discard snapshots list (free all snapshot blocks)
  */
@@ -392,7 +392,7 @@ static void discard_snapshot_list(ext2_filsys fs)
 }
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Remove the exclude inode from the filesystem
  */
@@ -401,7 +401,7 @@ static void remove_exclude_inode(ext2_filsys fs)
 	struct ext2_inode	inode;
 	ino_t			ino = EXT2_EXCLUDE_INO;
 	errcode_t		retval;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	struct ext2_group_desc *gd;
 	int i;
 
@@ -459,7 +459,7 @@ static void remove_journal_inode(ext2_filsys fs)
 			_("while reading journal inode"));
 		exit(1);
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	if (ino == EXT2_JOURNAL_INO)
 		remove_special_inode(fs, ino, &inode, 0);
 	else
@@ -510,7 +510,7 @@ static void update_mntopts(ext2_filsys fs, char *mntopts)
 	ext2fs_mark_super_dirty(fs);
 }
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask,
 		int on)
 {
@@ -555,7 +555,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 				 !((&sb->s_feature_compat)[(type)] & (mask)))
 #define FEATURE_CHANGED(type, mask) ((mask) & \
 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 #define FEATURE_ON_SAFE(compat, mask) \
 	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
 #define FEATURE_OFF_SAFE(compat, mask) \
@@ -566,7 +566,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
 	old_features[E2P_FEATURE_RO_INCOMPAT] = sb->s_feature_ro_compat;
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 	/* disallow changing features when filesystem has snapshots */
 	if (sb->s_feature_ro_compat & 
 		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
@@ -640,7 +640,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 	}
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		remove_exclude_inode(fs);
 	}
@@ -655,7 +655,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CLEANUP
+#ifdef EXT2FS_SNAPSHOT_CLEANUP
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT,
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		discard_snapshot_list(fs);
@@ -670,7 +670,7 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	}
 
 #endif
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HAS_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 	if (FEATURE_ON_SAFE(E2P_FEATURE_RO_INCOMPAT,
 				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		int big_journal = 0;

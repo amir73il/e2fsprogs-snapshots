@@ -536,7 +536,7 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int scramble_flag)
 			}
 		} else {
 			if ((inode.i_flags & EXT4_EXTENTS_FL) ||
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 			    (inode.i_flags & EXT4_SNAPFILE_FL) ||
 #endif
 			    inode.i_block[EXT2_IND_BLOCK] ||

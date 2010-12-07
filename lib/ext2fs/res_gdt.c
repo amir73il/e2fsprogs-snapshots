@@ -219,7 +219,7 @@ out_free:
 
 #define ext2fs_group_desc(fs, gdp, grp) (gdp)+(grp)
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_EXCLUDE_INODE
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * ext2fs_create_exclude_inode():
  * the exclude inode owns all the exclude bitmap blocks (one per block group)
@@ -254,7 +254,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 	indir_buf = (__u32 *)((char *)dindir_buf + 1*fs->blocksize);
 	data_buf = (__u32 *)((char *)dindir_buf + 2*fs->blocksize);
 
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	/* Migrate from old to new Next3 on-disk format */
 	if (fs->super->s_feature_compat &
 	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
@@ -403,7 +403,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 			}
 		}
 		fs->exclude_blks[grp] = data_blk;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 		/* reset old exclude/cow bitmap cache to zero */
 		if (gd->bg_exclude_bitmap_old || gd->bg_cow_bitmap_old) {
 			gd->bg_exclude_bitmap_old = 0;

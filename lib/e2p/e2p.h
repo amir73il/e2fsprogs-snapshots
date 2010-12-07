@@ -17,7 +17,7 @@
 /* `options' for print_flags() */
 
 #define PFOPT_LONG  1 /* Must be 1 for compatibility with `int long_format'. */
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_CTL
 #define PFOPT_SNAPSHOT  2 /* list/control snapshot flags */
 #define PFOPT_SNAPSHOT_X 4 /* -X option for 'Snapshot' flags */
 

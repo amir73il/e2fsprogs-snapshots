@@ -158,7 +158,7 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
 		fputs("test_filesystem ", f);
 		flags_found++;
 	}
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
 	if (s->s_flags & EXT2_FLAGS_IS_SNAPSHOT) {
 		fputs("is_snapshot ", f);
 		flags_found++;

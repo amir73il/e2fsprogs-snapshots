@@ -136,7 +136,7 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 	struct ext2_inode inode_buf;
 	ext2_extent_handle_t handle = 0;
 	blk_t addr_per_block;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 	blk64_t addr_per_tind_block;
 	int	tind;
 #endif
@@ -293,7 +293,7 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 
 	/* Triply indirect block */
 	block -= addr_per_block * addr_per_block;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 	tind = EXT2_TIND_BLOCK;
 	addr_per_tind_block = addr_per_block * addr_per_block * addr_per_block;
 	if (block > addr_per_tind_block) {
@@ -322,7 +322,7 @@ errcode_t ext2fs_bmap2(ext2_filsys fs, ext2_ino_t ino, struct ext2_inode *inode,
 		retval = ext2fs_alloc_block(fs, b, block_buf, &b);
 		if (retval)
 			goto done;
-#ifdef CONFIG_NEXT3_FS_SNAPSHOT_HUGE_SNAPSHOT
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 		inode_bmap(inode, tind) = b;
 #else
 		inode_bmap(inode, EXT2_TIND_BLOCK) = b;
