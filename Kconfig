@@ -40,3 +40,10 @@ config SNAPSHOT_HAS_SNAPSHOT
 	  to protect the snapshots.
 	  Fsck displays a warning about possible corruption of the snapshots
 	  in interactive mode and avoids freeing blocks in preen mode.
+
+config SNAPSHOT_CLEANUP
+	bool "Cleanup Next3 snapshot list when removing has_snapshot feature"
+	help
+	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
+	  Snapshot inodes are chained on a list starting at the super block.
+	  Delete all snapshot inodes on the list and reset exclude bitmap.

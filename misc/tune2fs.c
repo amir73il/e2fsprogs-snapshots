@@ -335,6 +335,63 @@ static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino,
 }
 
 #endif
+#ifdef EXT2FS_SNAPSHOT_CLEANUP
+/*
+ * Discard snapshots list (free all snapshot blocks)
+ */
+static void discard_snapshot_list(ext2_filsys fs)
+{
+	struct ext2_super_block *sb = fs->super;
+	struct ext2_inode	inode;
+	ext2_ino_t		ino = sb->s_snapshot_list;
+	errcode_t		retval;
+	int i = 0;
+	
+	if (!ino)
+		/* no snapshot list, but maybe active snapshot exists? */
+		ino = sb->s_snapshot_inum;
+	if (ino)
+		fputs(_("Discarding snapshots: "), stderr);
+
+	while (ino) {
+		retval = ext2fs_read_inode(fs, ino,  &inode);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while reading snapshot inode %u"),
+					ino);
+			exit(1);
+		}
+
+		remove_special_inode(fs, ino, &inode, 1);
+
+		retval = ext2fs_write_inode(fs, ino, &inode);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while writing snapshot inode %u"),
+					ino);
+			exit(1);
+		}
+
+		fprintf(stderr, _("%u,"), inode.i_generation);
+		ino = inode.i_next_snapshot;
+		i++;
+	}
+	
+	if (i > 0) {
+		sb->s_snapshot_inum = 0;
+		sb->s_snapshot_id = 0;
+		sb->s_snapshot_r_blocks_count = 0;
+		sb->s_snapshot_list = 0;
+		fputs(_("done\n"), stderr);
+	}
+	
+	/* no snapshots, so no snapshot problems to fix */
+	sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+	ext2fs_mark_super_dirty(fs);
+}
+
+#endif
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * Remove the exclude inode from the filesystem
@@ -588,6 +645,21 @@ static void update_feature_set(ext2_filsys fs, char *features)
 			com_err(program_name, retval,
 					_("while creating exclude inode"));
 			exit(1);
+		}
+	}
+
+#endif
+#ifdef EXT2FS_SNAPSHOT_CLEANUP
+	if (FEATURE_OFF_SAFE(E2P_FEATURE_RO_INCOMPAT,
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+		discard_snapshot_list(fs);
+		if (sb->s_feature_compat & 
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
+			/* reset exclude bitmap blocks */
+			retval = ext2fs_create_exclude_inode(fs, EXCLUDE_RESET);
+			if (retval)
+				sb->s_feature_compat &=
+					~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
 		}
 	}
 
