@@ -27,6 +27,7 @@
  */
 #undef EXT2FS_DEBUG
 #define EXT2FS_SNAPSHOT_ON_DISK
+#define EXT2FS_SNAPSHOT_BIG_JOURNAL
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files
@@ -652,6 +653,19 @@ struct ext2_super_block {
  */
 #define EXT3_JNL_BACKUP_BLOCKS	1
 
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+/*
+ * A Next3 'big' journal needs to accomodate extra snapshot COW credits.
+ * Default journal size accomodates maximum possible COW credits.
+ * Minimum required journal size accomodates the avarage COW credits.
+ */
+#define EXT3_DEF_JOURNAL_BLOCKS		32768
+#define NEXT3_AVG_COW_CREDITS		16
+#define NEXT3_MAX_COW_CREDITS		24
+#define NEXT3_MIN_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_AVG_COW_CREDITS)
+#define NEXT3_DEF_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_MAX_COW_CREDITS)
+
+#endif
 /*
  * Feature set definitions
  */

@@ -222,6 +222,22 @@ void parse_journal_opts(const char *opts)
 			journal_size = strtoul(arg, &p, 0);
 			if (*p)
 				journal_usage++;
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+		} else if (strcmp(token, "big") == 0) {
+			/* Create a big journal for Next3 */
+			journal_size = -NEXT3_MAX_COW_CREDITS;
+			continue;
+		} else if (strcmp(token, "bigger") == 0) {
+			/* Create a journal bigger than default */
+			if (!arg) {
+				journal_usage++;
+				continue;
+			}
+			journal_size = -strtoul(arg, &p, 0);
+			if (*p)
+				journal_usage++;
+			continue;
+#endif
 		} else if (strcmp(token, "v1_superblock") == 0) {
 			journal_flags |= EXT2_MKJOURNAL_V1_SUPER;
 			continue;
@@ -235,6 +251,10 @@ void parse_journal_opts(const char *opts)
 			"\tis set off by an equals ('=') sign.\n\n"
 			"Valid journal options are:\n"
 			"\tsize=<journal size in megabytes>\n"
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+			"\tbig (Next3 big journal size)\n"
+			"\tbigger=<X times bigger than default size>\n"
+#endif
 			"\tdevice=<journal device>\n\n"
 			"The journal size must be between "
 			"1024 and 10240000 filesystem blocks.\n\n"), stderr);
@@ -263,6 +283,22 @@ unsigned int figure_journal_size(int size, ext2_filsys fs)
 		return 0;
 	}
 
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+	if (size < -1) {
+		/* bigger journal requested */
+		j_blocks = ext2fs_big_journal_size(-size, fs->super->s_blocks_count);
+		if (j_blocks < EXT3_DEF_JOURNAL_BLOCKS*(-size)) {
+			fputs(_("\nFilesystem too small for requested "
+					"journal size.  "), stderr);
+			if (j_blocks < 0) {
+				fputs(_("Aborting.\n"), stderr);
+				exit(1);
+			}
+			fputs(_("Creating a smaller journal.\n"), stderr);
+		}
+	}
+
+#endif
 	if (size > 0) {
 		j_blocks = size * 1024 / (fs->blocksize	/ 1024);
 		if (j_blocks < 1024 || j_blocks > 10240000) {

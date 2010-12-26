@@ -7,3 +7,11 @@ config SNAPSHOT_ON_DISK
 	  the special exclude inode was allocated.
 	  Next3 defines the read-only compatible features 'has_snapshot', meaning
 	  that the file system contains snapshots.
+
+config SNAPSHOT_BIG_JOURNAL
+	bool "Create a big journal for Next3"
+	help
+	  Next3 transactions reserve up to 24 times more credits than Ext3
+	  transactions for the same operation.  On mke2fs and tune2fs, if the
+	  '-J big' option is used to create a journal, increase the default
+	  journal size by a factor of 24.

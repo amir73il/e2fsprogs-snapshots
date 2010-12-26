@@ -990,6 +990,11 @@ static char **parse_fs_type(const char *fs_type,
 		ext_type = "ext2";
 	else if (!strcmp(program_name, "mke3fs"))
 		ext_type = "ext3";
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+	else if (!strcmp(program_name, "mkfs.next3") ||
+		!strcmp(program_name, "mkn3fs"))
+		ext_type = "ext3";
+#endif
 	else if (progname) {
 		ext_type = strrchr(progname, '/');
 		if (ext_type)
@@ -1262,6 +1267,17 @@ static void PRS(int argc, char *argv[])
 		if (!strcmp(program_name, "mkfs.ext3") ||
 		    !strcmp(program_name, "mke3fs"))
 			journal_size = -1;
+#ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
+		
+		/* If called as mkfs.next3: */
+		if (!strcmp(program_name, "mkfs.next3") ||
+		    !strcmp(program_name, "mkn3fs")) {
+			/* 1. create a big journal */
+			journal_size = -NEXT3_MAX_COW_CREDITS;
+			/* 2. use system page size as block size */
+			blocksize = sys_page_size;
+		}
+#endif
 	}
 
 	while ((c = getopt (argc, argv,
