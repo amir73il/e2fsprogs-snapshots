@@ -31,8 +31,15 @@ errcode_t ext2fs_iblk_add_blocks(ext2_filsys fs, struct ext2_inode *inode,
 {
 	unsigned long long b = inode->i_blocks;
 
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
+	if (!((fs->super->s_feature_ro_compat &
+	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+	     /* snapshot file always supports the 'huge_file' flag */
+	     (inode->i_flags & EXT4_SNAPFILE_FL)) ||
+#else
 	if (!(fs->super->s_feature_ro_compat &
 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+#endif
 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
 	    num_blocks *= fs->blocksize / 512;
 
@@ -53,8 +60,15 @@ errcode_t ext2fs_iblk_sub_blocks(ext2_filsys fs, struct ext2_inode *inode,
 {
 	unsigned long long b = inode->i_blocks;
 
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
+	if (!((fs->super->s_feature_ro_compat &
+	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+	     /* snapshot file always supports the 'huge_file' flag */
+	     (inode->i_flags & EXT4_SNAPFILE_FL)) ||
+#else
 	if (!(fs->super->s_feature_ro_compat &
 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+#endif
 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
 	    num_blocks *= fs->blocksize / 512;
 
@@ -74,8 +88,15 @@ errcode_t ext2fs_iblk_sub_blocks(ext2_filsys fs, struct ext2_inode *inode,
 
 errcode_t ext2fs_iblk_set(ext2_filsys fs, struct ext2_inode *inode, blk64_t b)
 {
+#ifdef EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
+	if (!((fs->super->s_feature_ro_compat &
+	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+	     /* snapshot file always supports the 'huge_file' flag */
+	     (inode->i_flags & EXT4_SNAPFILE_FL)) ||
+#else
 	if (!(fs->super->s_feature_ro_compat &
 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) ||
+#endif
 	    !(inode->i_flags & EXT4_HUGE_FILE_FL))
 		b *= fs->blocksize / 512;
 

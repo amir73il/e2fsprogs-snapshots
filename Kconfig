@@ -67,3 +67,11 @@ config SNAPSHOT_FIX_SNAPSHOT
 	help
 	  On fsck -x or if the 'fix_snapshot' flag is set, prompt to delete
 	  all snapshot inodes and reset exclude bitmap.
+
+config SNAPSHOT_HUGE_SNAPSHOT
+	bool "Map maximum filesystem size with a single snapshot file"
+	help
+	  To map 2^32 logical blocks, 4 triple indirect blocks are used instead
+	  of just one.  The extra 3 triple indirect blocks are stored in-place
+	  of direct blocks, which are not in use by snapshot files.
+	  Snapshots cannot be enabled on filesytem with block size < 4K.
