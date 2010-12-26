@@ -26,6 +26,26 @@
 /* `options' for print_flags() */
 
 #define PFOPT_LONG  1 /* Must be 1 for compatibility with `int long_format'. */
+#ifdef EXT2FS_SNAPSHOT_CTL
+#define PFOPT_SNAPSHOT  2 /* list/control snapshot flags */
+#define PFOPT_SNAPSHOT_X 4 /* -X option for 'Snapshot' flags */
+
+/*
+ * snapshot status/control flags for lsattr/chattr -X.
+ * reusing compression flags on the GET/SETFLAGS ioctl for snapshot control API.
+ * all the flags below are either read-only on-disk inode flags (deleted and
+ * shrunk) or in-memory inode status flags (the rest).
+ * TODO: implement new ioctls for snapshot status/control.
+ */
+#define NEXT3_SNAPFILE_LIST_FL		0x00000100 /* snapshot is on list */
+#define NEXT3_SNAPFILE_ENABLED_FL	0x00000200 /* snapshot is enabled */
+#define NEXT3_SNAPFILE_ACTIVE_FL	0x00000400 /* snapshot is active */
+#define NEXT3_SNAPFILE_INUSE_FL		0x00000800 /* snapshot is in-use */
+#define NEXT3_SNAPFILE_DELETED_FL	0x04000000 /* snapshot is deleted */
+#define NEXT3_SNAPFILE_SHRUNK_FL	0x08000000 /* snapshot is shrunk */
+#define NEXT3_SNAPFILE_OPEN_FL		0x10000000 /* snapshot is mounted */
+#define NEXT3_SNAPFILE_TAGGED_FL	0x20000000 /* snapshot is tagged */
+#endif
 
 
 int fgetflags (const char * name, unsigned long * flags);

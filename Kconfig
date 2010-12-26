@@ -23,3 +23,11 @@ config SNAPSHOT_EXCLUDE_INODE
 	  It is pre-allocated by 'mke2fs/tune2fs -O exclude_inode'.
 	  It is extended by resize2fs when block groups are added.
 	  Fsck checks that all exclude inode blocks are allocated.
+
+config SNAPSHOT_CTL
+	bool "Next3 snapshot control with chattr/lsattr -X"
+	help
+	  Set/clear snapshots parent directory with chattr +/-x.
+	  Take/delete snapshot with chattr -X +/-S.
+	  Enable/disable snapshot with chattr -X +/-n.
+	  View snapshot status with lsattr -X.

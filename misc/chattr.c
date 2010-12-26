@@ -55,6 +55,10 @@
 #include "nls-enable.h"
 
 static const char * program_name = "chattr";
+#ifdef EXT2FS_SNAPSHOT_CTL
+
+static int chsnap;
+#endif
 
 static int add;
 static int rem;
@@ -81,9 +85,19 @@ static unsigned long sf;
 
 static void usage(void)
 {
+#ifdef EXT2FS_SNAPSHOT_CTL
+	fprintf(stderr, chsnap ?
+		_("Usage: %s [-+=let] snapshot files...\n") :
+		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
+		program_name);
+	fprintf(stderr,
+		_("Usage: %s -X [-+=Snt] snapshot files...\n"),
+		program_name);
+#else
 	fprintf(stderr,
 		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
 		program_name);
+#endif
 	exit(1);
 }
 
@@ -92,7 +106,11 @@ struct flags_char {
 	char 		optchar;
 };
 
+#ifdef EXT2FS_SNAPSHOT_CTL
+static const struct flags_char ext2_flags_array[] = {
+#else
 static const struct flags_char flags_array[] = {
+#endif
 	{ EXT2_NOATIME_FL, 'A' },
 	{ EXT2_SYNC_FL, 'S' },
 	{ EXT2_DIRSYNC_FL, 'D' },
@@ -106,9 +124,32 @@ static const struct flags_char flags_array[] = {
 	{ EXT2_UNRM_FL, 'u' },
 	{ EXT2_NOTAIL_FL, 't' },
 	{ EXT2_TOPDIR_FL, 'T' },
+#ifdef EXT2FS_SNAPSHOT_CTL
+	{ EXT4_SNAPFILE_FL, 'x' },
+#endif
 	{ 0, 0 }
 };
 
+#ifdef EXT2FS_SNAPSHOT_CTL
+static const struct flags_char *flags_array = ext2_flags_array;
+
+/* Traditional snapshot flags */
+static struct flags_char snapshot_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, 'l' },
+	{ NEXT3_SNAPFILE_ENABLED_FL, 'e' },
+	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
+	{ 0, 0 }
+};
+
+/* Cool 'Snapshot' flags */
+static struct flags_char snapshot_X_flags_array[] = {
+	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
+	{ NEXT3_SNAPFILE_ENABLED_FL, 'n' },
+	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
+	{ 0, 0 }
+};
+
+#endif
 static unsigned long get_flag(char c)
 {
 	const struct flags_char *fp;
@@ -131,6 +172,12 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
+#ifdef EXT2FS_SNAPSHOT_CTL
+			if (*p == 'X') {
+				flags_array = snapshot_X_flags_array;
+				continue;
+			}
+#endif
 			if (*p == 'R') {
 				recursive = 1;
 				continue;
@@ -303,6 +350,13 @@ int main (int argc, char ** argv)
 #endif
 	if (argc && *argv)
 		program_name = *argv;
+#ifdef EXT2FS_SNAPSHOT_CTL
+	i = strlen(program_name);
+	if (i >= 6 && !strcmp(program_name + i - 6, "chsnap")) {
+		flags_array = snapshot_flags_array;
+		chsnap = 1;
+	}
+#endif
 	i = 1;
 	while (i < argc && !end_arg) {
 		/* '--' arg should end option processing */
