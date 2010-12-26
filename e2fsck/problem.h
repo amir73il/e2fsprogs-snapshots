@@ -227,6 +227,14 @@ struct problem_context {
 /* Block group checksum (latch question) */
 #define PR_0_GDT_CSUM_LATCH			0x00003E
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+/* Exclude_inode not enabled, but exclude inode is non-zero */
+#define PR_0_CLEAR_EXCLUDE_INODE		0x000100
+
+/* Exclude inode invalid */
+#define PR_0_EXCLUDE_INODE_INVALID		0x000101
+
+#endif
 
 /*
  * Pass 1 errors
@@ -520,6 +528,11 @@ struct problem_context {
 /* EOFBLOCKS flag set when not necessary */
 #define PR_1_EOFBLOCKS_FL_SET		0x010060
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+/* Exclude inode failed */
+#define PR_1_EXCLUDE_INODE_CREATE	0x010100
+
+#endif
 /*
  * Pass 1b errors
  */

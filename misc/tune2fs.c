@@ -118,6 +118,9 @@ static void usage(void)
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
+#endif
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
 	EXT2_FEATURE_INCOMPAT_FILETYPE |
@@ -135,6 +138,9 @@ static __u32 ok_features[3] = {
 static __u32 clear_ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
+#endif
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX,
 	/* Incompat */
@@ -284,6 +290,78 @@ static int release_blocks_proc(ext2_filsys fs, blk64_t *blocknr,
 	return 0;
 }
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+/*
+ * Remove a special inode from the filesystem:
+ * - resize inode, @nlink = 0
+ * - exclude inode, @nlink = 0
+ * - snapshot inodes, @nlink = 1 (snapshots directory)
+ */
+static void remove_special_inode(ext2_filsys fs, ext2_ino_t ino,
+		struct ext2_inode *inode, int nlink)
+{
+	int retval = ext2fs_read_bitmaps(fs);
+	if (retval) {
+		com_err(program_name, retval,
+				_("while reading bitmaps"));
+		exit(1);
+	}
+	retval = ext2fs_block_iterate3(fs, ino,
+			BLOCK_FLAG_READ_ONLY, NULL,
+			release_blocks_proc, NULL);
+	if (retval) {
+		com_err(program_name, retval,
+				_("while clearing inode"));
+		exit(1);
+	}
+	if (nlink) {
+		/* reset truncated inode */
+		inode->i_size = 0;
+		inode->i_size_high = 0;
+		inode->i_blocks = 0;
+		memset(inode->i_block, 0, sizeof(inode->i_block));
+	} else {
+		/* clear unlinked inode */
+		memset(inode, 0, sizeof(*inode));
+	}
+	ext2fs_mark_bb_dirty(fs);
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+}
+
+#endif
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+/*
+ * Remove the exclude inode from the filesystem
+ */
+static void remove_exclude_inode(ext2_filsys fs)
+{
+	struct ext2_inode	inode;
+	ino_t			ino = EXT2_EXCLUDE_INO;
+	errcode_t		retval;
+
+	/* clear fix_exclude flag */
+	fs->super->s_flags &= ~EXT2_FLAGS_FIX_EXCLUDE;
+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
+	ext2fs_mark_super_dirty(fs);
+
+	retval = ext2fs_read_inode(fs, ino,  &inode);
+	if (retval) {
+		com_err(program_name, retval,
+			_("while reading exclude inode"));
+		exit(1);
+	}
+
+	remove_special_inode(fs, ino, &inode, 0);
+
+	retval = ext2fs_write_inode(fs, ino, &inode);
+	if (retval) {
+		com_err(program_name, retval,
+			_("while writing exclude inode"));
+		exit(1);
+	}
+}
+
+#endif
 /*
  * Remove the journal inode from the filesystem
  */
@@ -299,6 +377,11 @@ static void remove_journal_inode(ext2_filsys fs)
 			_("while reading journal inode"));
 		exit(1);
 	}
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+	if (ino == EXT2_JOURNAL_INO)
+		remove_special_inode(fs, ino, &inode, 0);
+	else
+#else
 	if (ino == EXT2_JOURNAL_INO) {
 		retval = ext2fs_read_bitmaps(fs);
 		if (retval) {
@@ -318,6 +401,7 @@ static void remove_journal_inode(ext2_filsys fs)
 		ext2fs_mark_bb_dirty(fs);
 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 	} else
+#endif
 		inode.i_flags &= ~EXT2_IMMUTABLE_FL;
 	retval = ext2fs_write_inode(fs, ino, &inode);
 	if (retval) {
@@ -356,6 +440,34 @@ static void request_fsck_afterwards(ext2_filsys fs)
 		printf(_("(and reboot afterwards!)\n"));
 }
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+static int verify_clean_fs(ext2_filsys fs, int compat, unsigned int mask,
+		int on)
+{
+	struct ext2_super_block *sb= fs->super;
+
+	if ((mount_flags & EXT2_MF_MOUNTED) &&
+		!(mount_flags & EXT2_MF_READONLY)) {
+		fprintf(stderr, _("The '%s' feature may only be "
+					"%s when the filesystem is\n"
+					"unmounted or mounted read-only.\n"),
+				e2p_feature2string(compat, mask),
+				on ? "set" : "cleared");
+		exit(1);
+	}
+	if (sb->s_feature_incompat &
+		EXT3_FEATURE_INCOMPAT_RECOVER) {
+		fprintf(stderr, _("The needs_recovery flag is set.  "
+					"Please run e2fsck before %s\n"
+					"the '%s' flag.\n"),
+				on ? "setting" : "clearing",
+				e2p_feature2string(compat, mask));
+		exit(1);
+	}
+	return 1;
+}
+
+#endif
 /*
  * Update the feature set as provided by the user.
  */
@@ -374,6 +486,12 @@ static void update_feature_set(ext2_filsys fs, char *features)
 				 !((&sb->s_feature_compat)[(type)] & (mask)))
 #define FEATURE_CHANGED(type, mask) ((mask) & \
 		     (old_features[(type)] ^ (&sb->s_feature_compat)[(type)]))
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+#define FEATURE_ON_SAFE(compat, mask) \
+	(FEATURE_ON(compat, mask) && verify_clean_fs(fs, compat, mask, 1))
+#define FEATURE_OFF_SAFE(compat, mask) \
+	(FEATURE_OFF(compat, mask) && verify_clean_fs(fs, compat, mask, 0))
+#endif
 
 	old_features[E2P_FEATURE_COMPAT] = sb->s_feature_compat;
 	old_features[E2P_FEATURE_INCOMPAT] = sb->s_feature_incompat;
@@ -434,6 +552,21 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		sb->s_feature_compat &= ~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
 	}
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
+		remove_exclude_inode(fs);
+	}
+
+	if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
+		retval = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
+		if (retval) {
+			com_err(program_name, retval,
+					_("while creating exclude inode"));
+			exit(1);
+		}
+	}
+
+#endif
 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_DIR_INDEX)) {
 		if (!sb->s_def_hash_version)
 			sb->s_def_hash_version = EXT2_HASH_HALF_MD4;

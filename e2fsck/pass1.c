@@ -896,7 +896,11 @@ void e2fsck_pass1(e2fsck_t ctx)
 			if (ino == EXT2_BOOT_LOADER_INO) {
 				if (LINUX_S_ISDIR(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+			} else if (ino == EXT2_RESIZE_INO || ino == EXT2_EXCLUDE_INO) {
+#else
 			} else if (ino == EXT2_RESIZE_INO) {
+#endif
 				if (inode->i_mode &&
 				    !LINUX_S_ISREG(inode->i_mode))
 					problem = PR_1_RESERVED_BAD_MODE;
@@ -1149,6 +1153,27 @@ void e2fsck_pass1(e2fsck_t ctx)
 		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
 	}
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+	if (ctx->flags & E2F_FLAG_EXCLUDE_INODE) {
+		ext2fs_block_bitmap save_bmap;
+
+		save_bmap = fs->block_map;
+		fs->block_map = ctx->block_found_map;
+		clear_problem_context(&pctx);
+		pctx.errcode = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
+		if (pctx.errcode &&
+			fix_problem(ctx, PR_1_EXCLUDE_INODE_CREATE, &pctx)) {
+			memset(&inode, 0, sizeof(inode));
+			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, inode,
+					   "clear_exclude");
+			fs->super->s_feature_compat &= ~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
+			ctx->flags |= E2F_FLAG_RESTART;
+		}
+		fs->block_map = save_bmap;
+		ctx->flags &= ~E2F_FLAG_EXCLUDE_INODE;
+	}
+
+#endif
 	if (ctx->flags & E2F_FLAG_RESTART) {
 		/*
 		 * Only the master copy of the superblock and block

@@ -382,6 +382,12 @@ static void write_inode_tables(ext2_filsys fs, int lazy_flag, int itable_zeroed)
 			/* The kernel doesn't need to zero the itable blocks */
 			fs->group_desc[i].bg_flags |= EXT2_BG_INODE_ZEROED;
 			ext2fs_group_desc_csum_set(fs, i);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+			if (fs->super->s_feature_compat &
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
+				/* zero the designated exclude bitmap block */
+				num++;
+#endif
 		}
 		retval = ext2fs_zero_blocks(fs, blk, num, &blk, &num);
 		if (retval) {
@@ -844,6 +850,9 @@ static void parse_extended_opts(struct ext2_super_block *param,
 static __u32 ok_features[3] = {
 	/* Compat */
 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+		EXT2_FEATURE_COMPAT_EXCLUDE_INODE |
+#endif
 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
 		EXT2_FEATURE_COMPAT_DIR_INDEX |
 		EXT2_FEATURE_COMPAT_EXT_ATTR,
@@ -1276,6 +1285,10 @@ static void PRS(int argc, char *argv[])
 			journal_size = -NEXT3_MAX_COW_CREDITS;
 			/* 2. use system page size as block size */
 			blocksize = sys_page_size;
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+			/* 3. create exclude inode */
+			edit_feature("exclude_inode", &fs_param.s_feature_compat);
+#endif
 		}
 #endif
 	}
@@ -2298,6 +2311,17 @@ int main (int argc, char *argv[])
 				exit(1);
 			}
 		}
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+		if (fs->super->s_feature_compat &
+		    EXT2_FEATURE_COMPAT_EXCLUDE_INODE) {
+			retval = ext2fs_create_exclude_inode(fs, EXCLUDE_CREATE);
+			if (retval) {
+				com_err("ext2fs_create_exclude_inode", retval,
+				_("while reserving blocks for exclude bitmap"));
+				exit(1);
+			}
+		}
+#endif
 	}
 
 	if (journal_device) {

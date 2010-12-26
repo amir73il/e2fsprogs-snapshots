@@ -203,6 +203,9 @@ struct struct_ext2_filsys {
 	dgrp_t				group_desc_count;
 	unsigned long			desc_blocks;
 	struct opaque_ext2_group_desc *	group_desc;
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+	__u32 *				exclude_blks;
+#endif
 	int				inode_blocks_per_group;
 	ext2fs_inode_bitmap		inode_map;
 	ext2fs_block_bitmap		block_map;
@@ -1146,6 +1149,15 @@ extern errcode_t ext2fs_read_bb_FILE(ext2_filsys fs, FILE *f,
 
 /* res_gdt.c */
 extern errcode_t ext2fs_create_resize_inode(ext2_filsys fs);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+extern errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags);
+
+/* exclude inode creation flags */
+#define EXCLUDE_READONLY 0 /* only read exclude bitmap blocks */
+#define EXCLUDE_ALLOC	 1 /* allocate missing exclude bitmap blocks */
+#define EXCLUDE_RESET	 2 /* reset exclude bitmap blocks to zero */
+#define EXCLUDE_CREATE	 3 /* alloc and/or reset exclude bitmap blocks */
+#endif
 
 /* swapfs.c */
 extern void ext2fs_swap_ext_attr(char *to, char *from, int bufsize,

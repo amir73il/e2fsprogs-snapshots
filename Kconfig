@@ -15,3 +15,11 @@ config SNAPSHOT_BIG_JOURNAL
 	  transactions for the same operation.  On mke2fs and tune2fs, if the
 	  '-J big' option is used to create a journal, increase the default
 	  journal size by a factor of 24.
+
+config SNAPSHOT_EXCLUDE_INODE
+	bool "Create/check exclude inode for Next3"
+	help
+	  The exclude inode owns all the exclude bitmap blocks.
+	  It is pre-allocated by 'mke2fs/tune2fs -O exclude_inode'.
+	  It is extended by resize2fs when block groups are added.
+	  Fsck checks that all exclude inode blocks are allocated.

@@ -178,6 +178,9 @@ struct resource_track {
 #define E2F_FLAG_GOT_DEVSIZE	0x0800 /* Device size has been fetched */
 #define E2F_FLAG_EXITING	0x1000 /* E2fsck exiting due to errors */
 #define E2F_FLAG_TIME_INSANE	0x2000 /* Time is insane */
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+#define E2F_FLAG_EXCLUDE_INODE	0x4000 /* Request to recreate exclude inode */
+#endif
 
 #define E2F_RESET_FLAGS (E2F_FLAG_TIME_INSANE)
 
@@ -476,6 +479,9 @@ void e2fsck_rehash_directories(e2fsck_t ctx);
 void check_super_block(e2fsck_t ctx);
 int check_backup_super_block(e2fsck_t ctx);
 void check_resize_inode(e2fsck_t ctx);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
+void check_exclude_inode(e2fsck_t ctx);
+#endif
 
 /* util.c */
 extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,

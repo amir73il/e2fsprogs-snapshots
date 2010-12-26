@@ -28,6 +28,7 @@
 #undef EXT2FS_DEBUG
 #define EXT2FS_SNAPSHOT_ON_DISK
 #define EXT2FS_SNAPSHOT_BIG_JOURNAL
+#define EXT2FS_SNAPSHOT_EXCLUDE_INODE
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files
