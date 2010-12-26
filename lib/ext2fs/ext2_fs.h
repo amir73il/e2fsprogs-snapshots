@@ -36,6 +36,7 @@
 #define EXT2FS_SNAPSHOT_CHECK_LIST
 #define EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 #define EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
+#define EXT2FS_SNAPSHOT_MESSAGE_BUFFER
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files

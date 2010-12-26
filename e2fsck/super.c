@@ -684,6 +684,45 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
 	}
 }
 
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+/*
+ * This function prints the message buffer at the end of super block.
+ */
+static void e2fsck_print_message_buffer(e2fsck_t ctx)
+{
+	char *buf;
+	int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
+	unsigned offset = 0;
+	int retval;
+#define MSGLEN 256
+
+	if (len < 2*SUPERBLOCK_OFFSET)
+		return;
+
+	buf = (char *) e2fsck_allocate_memory(ctx, len, "message buffer");
+
+	io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
+	/* read message buffer from super block + 2K */
+	retval = io_channel_read_blk(ctx->fs->io, 2, 2, buf);
+	if (retval || !*buf)
+		goto out;
+
+	/* print messages in buffer */
+	puts("Error messages recorded in message buffer:");
+	while (offset < len && buf[offset]) {
+		fputs(buf+offset, stdout);
+		offset += MSGLEN;
+	}
+	/* clear message buffer */
+	memset(buf, 0, len);
+	retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
+	puts("End of message buffer.");
+out:
+	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
+	ext2fs_free_mem(&buf);
+}
+
+#endif
 
 void check_super_block(e2fsck_t ctx)
 {
@@ -1103,6 +1142,13 @@ void check_super_block(e2fsck_t ctx)
 	 */
 	e2fsck_fix_dirhash_hint(ctx);
 
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+	/*
+	 * Print message buffer if necessary
+	 */
+	e2fsck_print_message_buffer(ctx);
+
+#endif
 	return;
 }
 

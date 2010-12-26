@@ -75,3 +75,14 @@ config SNAPSHOT_HUGE_SNAPSHOT
 	  of just one.  The extra 3 triple indirect blocks are stored in-place
 	  of direct blocks, which are not in use by snapshot files.
 	  Snapshots cannot be enabled on filesytem with block size < 4K.
+
+config SNAPSHOT_MESSAGE_BUFFER
+	bool "Dump Next3 message buffer on fsck"
+	help
+	  Next3 error messages are recorded in a 2K message buffer after the
+	  journal super block.  On journal recovery, the journal message buffer
+	  is copied to the file system message buffer.  On fsck, if the message
+	  buffer is not empty, the recorded messages are printed to stdout and
+	  the buffer is cleared.
+	  Next3 supports only block size of 4K, so there is always 2K of free
+	  space for the message buffer after the 1K super block.
