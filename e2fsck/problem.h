@@ -39,6 +39,9 @@ struct problem_context {
 #define PR_LATCH_TOOBIG	0x0080	/* Latch for file to big errors */
 #define PR_LATCH_OPTIMIZE_DIR 0x0090 /* Latch for optimize directories */
 #define PR_LATCH_BG_CHECKSUM 0x00A0  /* Latch for block group checksums */
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+#define PR_LATCH_XBITMAP 0x00B0 /* Latch for pass 5 exclude bitmap proc. */
+#endif
 
 #define PR_LATCH(x)	((((x) & PR_LATCH_MASK) >> 4) - 1)
 
@@ -996,6 +999,26 @@ struct problem_context {
 /* Inode in use but group is marked INODE_UNINIT */
 #define PR_5_INODE_UNINIT		0x050019
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+/* Exclude bitmap differences header */
+#define PR_5_EXCLUDE_BITMAP_HEADER	0x050100
+
+/* Block not excluded, but marked in exclude bitmap */
+#define PR_5_BLOCK_NOTEXCLUDED		0x050101
+
+/* Block excluded, but not marked in exclude bitmap */
+#define PR_5_BLOCK_EXCLUDED		0x050102
+
+/* Block range not excluded, but marked in exclude bitmap */
+#define PR_5_BLOCK_RANGE_NOTEXCLUDED	0x050103
+
+/* Block range excluded, but not marked in exclude bitmap */
+#define PR_5_BLOCK_RANGE_EXCLUDED	0x050104
+
+/* Exclude bitmap differences end */
+#define PR_5_EXCLUDE_BITMAP_END		0x050105
+
+#endif
 /*
  * Post-Pass 5 errors
  */

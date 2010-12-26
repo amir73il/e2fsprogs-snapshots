@@ -46,6 +46,10 @@ void ext2fs_free(ext2_filsys fs)
 		ext2fs_free_block_bitmap(fs->block_map);
 	if (fs->inode_map)
 		ext2fs_free_inode_bitmap(fs->inode_map);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	if (fs->exclude_map)
+		ext2fs_free_inode_bitmap(fs->exclude_map);
+#endif
 
 	if (fs->badblocks)
 		ext2fs_badblocks_list_free(fs->badblocks);

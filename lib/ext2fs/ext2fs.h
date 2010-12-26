@@ -176,6 +176,9 @@ typedef struct ext2_file *ext2_file_t;
 #define EXT2_FLAG_64BITS		0x20000
 #define EXT2_FLAG_PRINT_PROGRESS	0x40000
 #define EXT2_FLAG_DIRECT_IO		0x80000
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+#define EXT2_FLAG_EXCLUDE_DIRTY		0x100000
+#endif
 
 /*
  * Special flag in the ext2 inode i_flag field that means that this is
@@ -209,6 +212,9 @@ struct struct_ext2_filsys {
 	int				inode_blocks_per_group;
 	ext2fs_inode_bitmap		inode_map;
 	ext2fs_block_bitmap		block_map;
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	ext2fs_block_bitmap		exclude_map;
+#endif
 	/* XXX FIXME-64: not 64-bit safe, but not used? */
 	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
 	errcode_t (*check_directory)(ext2_filsys fs, ext2_ino_t ino);
@@ -674,8 +680,14 @@ extern errcode_t ext2fs_copy_bitmap(ext2fs_generic_bitmap src,
 				    ext2fs_generic_bitmap *dest);
 extern errcode_t ext2fs_write_inode_bitmap(ext2_filsys fs);
 extern errcode_t ext2fs_write_block_bitmap (ext2_filsys fs);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+extern errcode_t ext2fs_write_exclude_bitmap (ext2_filsys fs);
+#endif
 extern errcode_t ext2fs_read_inode_bitmap (ext2_filsys fs);
 extern errcode_t ext2fs_read_block_bitmap(ext2_filsys fs);
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+extern errcode_t ext2fs_read_exclude_bitmap (ext2_filsys fs);
+#endif
 extern errcode_t ext2fs_allocate_block_bitmap(ext2_filsys fs,
 					      const char *descr,
 					      ext2fs_block_bitmap *ret);
@@ -1365,6 +1377,16 @@ _INLINE_ void ext2fs_mark_bb_dirty(ext2_filsys fs)
 	fs->flags |= EXT2_FLAG_BB_DIRTY | EXT2_FLAG_CHANGED;
 }
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+/*
+ * Mark the exclude bitmap as dirty
+ */
+_INLINE_ void ext2fs_mark_exclude_dirty(ext2_filsys fs)
+{
+	fs->flags |= EXT2_FLAG_EXCLUDE_DIRTY | EXT2_FLAG_CHANGED;
+}
+
+#endif
 /*
  * Check to see if a filesystem's inode bitmap is dirty
  */
@@ -1381,6 +1403,16 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
 	return (fs->flags & EXT2_FLAG_BB_DIRTY);
 }
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+/*
+ * Check to see if a filesystem's exclude bitmap is dirty
+ */
+_INLINE_ int ext2fs_test_exclude_dirty(ext2_filsys fs)
+{
+	return (fs->flags & EXT2_FLAG_EXCLUDE_DIRTY);
+}
+
+#endif
 /*
  * Return the group # of a block
  */

@@ -1552,6 +1552,28 @@ static struct e2fsck_problem problem_table[] = {
 	  "\n",
 	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	/* Exclude bitmap differences header */
+	{ PR_5_EXCLUDE_BITMAP_HEADER,
+	  N_("Exclude @B differences: "),
+	  PROMPT_NONE, PR_PREEN_OK | PR_PREEN_NOMSG},
+
+	/* Block not excluded, but marked in exclude bitmap */
+	{ PR_5_BLOCK_NOTEXCLUDED,
+	  " -%b",
+	  PROMPT_NONE, PR_LATCH_XBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
+
+	/* Block excluded, but not marked in exclude bitmap */
+	{ PR_5_BLOCK_EXCLUDED,
+	  " +%b",
+	  PROMPT_NONE, PR_LATCH_XBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
+
+	/* Exclude bitmap differences end */
+	{ PR_5_EXCLUDE_BITMAP_END,
+	  "\n",
+	  PROMPT_FIX, PR_PREEN_OK | PR_PREEN_NOMSG },
+
+#endif
 	/* Inode bitmap differences header */
 	{ PR_5_INODE_BITMAP_HEADER,
 	  N_("@i @B differences: "),
@@ -1628,6 +1650,18 @@ static struct e2fsck_problem problem_table[] = {
 	  " +(%b--%c)",
 	  PROMPT_NONE, PR_LATCH_BBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	/* Block range not excluded, but marked in exclude bitmap */
+	{ PR_5_BLOCK_RANGE_NOTEXCLUDED,
+	  " -(%b--%c)",
+	  PROMPT_NONE, PR_LATCH_XBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
+
+	/* Block range excluded, but not marked in exclude bitmap */
+	{ PR_5_BLOCK_RANGE_EXCLUDED,
+	  " +(%b--%c)",
+	  PROMPT_NONE, PR_LATCH_XBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
+
+#endif
 	/* Inode range not used, but marked in bitmap */
 	{ PR_5_INODE_RANGE_UNUSED,
 	  " -(%i--%j)",
@@ -1669,6 +1703,9 @@ static struct latch_descr pr_latch_info[] = {
 	{ PR_LATCH_BBLOCK, PR_1_INODE_BBLOCK_LATCH, 0 },
 	{ PR_LATCH_IBITMAP, PR_5_INODE_BITMAP_HEADER, PR_5_INODE_BITMAP_END },
 	{ PR_LATCH_BBITMAP, PR_5_BLOCK_BITMAP_HEADER, PR_5_BLOCK_BITMAP_END },
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	{ PR_LATCH_XBITMAP, PR_5_EXCLUDE_BITMAP_HEADER, PR_5_EXCLUDE_BITMAP_END },
+#endif
 	{ PR_LATCH_RELOC, PR_0_RELOCATE_HINT, 0 },
 	{ PR_LATCH_DBLOCK, PR_1B_DUP_BLOCK_HEADER, PR_1B_DUP_BLOCK_END },
 	{ PR_LATCH_LOW_DTIME, PR_1_ORPHAN_LIST_REFUGEES, 0 },

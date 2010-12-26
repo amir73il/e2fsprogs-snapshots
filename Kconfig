@@ -47,3 +47,11 @@ config SNAPSHOT_CLEANUP
 	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
 	  Snapshot inodes are chained on a list starting at the super block.
 	  Delete all snapshot inodes on the list and reset exclude bitmap.
+
+config SNAPSHOT_EXCLUDE_BITMAP
+	bool "Check Next3 exclude bitmap on fsck"
+	help
+	  Excluding blocks is done by setting their bit in the exclude bitmap.
+	  There is one exclude bitmap block per block group.  The exclude
+	  bitmap blocks are owned by the special exclude inode.
+	  Fsck checks that all (and only) snapshot file blocks are excluded.
