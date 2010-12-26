@@ -61,3 +61,9 @@ config SNAPSHOT_CHECK_LIST
 	help
 	  Check that all inodes on snapshot list are valid snapshots and
 	  prompt to terminate list when bad inode is found.
+
+config SNAPSHOT_FIX_SNAPSHOT
+	bool "Delete all snapshots on fsck -x"
+	help
+	  On fsck -x or if the 'fix_snapshot' flag is set, prompt to delete
+	  all snapshot inodes and reset exclude bitmap.

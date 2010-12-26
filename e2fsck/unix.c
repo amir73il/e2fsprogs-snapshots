@@ -73,7 +73,11 @@ int journal_enable_debug = -1;
 static void usage(e2fsck_t ctx)
 {
 	fprintf(stderr,
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+		_("Usage: %s [-panyrcdfvtxDFV] [-b superblock] [-B blocksize]\n"
+#else
 		_("Usage: %s [-panyrcdfvtDFV] [-b superblock] [-B blocksize]\n"
+#endif
 		"\t\t[-I inode_buffer_blocks] [-P process_inode_size]\n"
 		"\t\t[-l|-L bad_blocks_file] [-C fd] [-j external_journal]\n"
 		"\t\t[-E extended-options] device\n"),
@@ -92,6 +96,9 @@ static void usage(e2fsck_t ctx)
 		" -j external_journal  Set location of the external journal\n"
 		" -l bad_blocks_file   Add to badblocks list\n"
 		" -L bad_blocks_file   Set badblocks list\n"
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+		" -x                   Fix or discard snapshots\n"
+#endif
 		));
 
 	exit(FSCK_USAGE);
@@ -676,7 +683,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
 		ctx->program_name = *argv;
 	else
 		ctx->program_name = "e2fsck";
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDkx")) != EOF)
+#else
 	while ((c = getopt (argc, argv, "panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk")) != EOF)
+#endif
 		switch (c) {
 		case 'C':
 			ctx->progress = e2fsck_update_progress;
@@ -806,6 +817,11 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
 		case 'k':
 			keep_bad_blocks++;
 			break;
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+		case 'x':
+			ctx->options |= E2F_OPT_FIX_SNAPSHOT;
+			break;
+#endif
 		default:
 			usage(ctx);
 		}

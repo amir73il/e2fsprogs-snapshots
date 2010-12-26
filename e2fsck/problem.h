@@ -243,6 +243,11 @@ struct problem_context {
 #define PR_0_BAD_SNAPSHOT			0x000102
 
 #endif
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+/* Corrupted snapshot */
+#define PR_0_FIX_SNAPSHOT			0x000103
+
+#endif
 
 /*
  * Pass 1 errors

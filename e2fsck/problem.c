@@ -42,6 +42,9 @@
 #define PROMPT_RECREATE 19
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 #define PROMPT_TERMINATE_LIST 20
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+#define PROMPT_DISCARD_SNAPSHOTS 21
+#endif
 #define PROMPT_NULL	22
 #else
 #define PROMPT_NULL	20
@@ -74,6 +77,9 @@ static const char *prompt[] = {
 	N_("Recreate"),		/* 19 */
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 	N_("Terminate list"),	/* 20 */
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+	N_("Discard snapshots"),/* 21 */
+#endif
 	"",			/* 22 */
 #else
 	"",			/* 20 */
@@ -359,6 +365,14 @@ static struct e2fsck_problem problem_table[] = {
 	{ PR_0_BAD_SNAPSHOT,
 	  N_("Bad @i found on snapshot list.  "),
 	  PROMPT_TERMINATE_LIST, PR_PREEN_OK },
+
+#endif
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+	/* Corrupted snapshot */
+	{ PR_0_FIX_SNAPSHOT,
+	  N_("@f may contain corrupted snapshots.\n"
+	     "This version of e2fsck does not support fixing snapshots.\n"),
+	  PROMPT_DISCARD_SNAPSHOTS, 0 },
 
 #endif
 	/* Last mount time is in the future */
