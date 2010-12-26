@@ -160,6 +160,20 @@ static void print_super_flags(struct ext2_super_block * s, FILE *f)
 		fputs("test_filesystem ", f);
 		flags_found++;
 	}
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+	if (s->s_flags & EXT2_FLAGS_IS_SNAPSHOT) {
+		fputs("is_snapshot ", f);
+		flags_found++;
+	}
+	if (s->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
+		fputs("fix_snapshot ", f);
+		flags_found++;
+	}
+	if (s->s_flags & EXT2_FLAGS_FIX_EXCLUDE) {
+		fputs("fix_exclude ", f);
+		flags_found++;
+	}
+#endif
 	if (flags_found)
 		fputs("\n", f);
 	else

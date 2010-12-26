@@ -1,0 +1,9 @@
+config SNAPSHOT_ON_DISK
+	bool "Next3 on-disk format changes"
+	help
+	  Next3 uses a few reserved fields and flags in the Ext2 super block,
+	  and inode structs.
+	  Next3 defines the compatible feature 'exclude_inode', meaning that
+	  the special exclude inode was allocated.
+	  Next3 defines the read-only compatible features 'has_snapshot', meaning
+	  that the file system contains snapshots.
