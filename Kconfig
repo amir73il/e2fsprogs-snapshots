@@ -55,3 +55,9 @@ config SNAPSHOT_EXCLUDE_BITMAP
 	  There is one exclude bitmap block per block group.  The exclude
 	  bitmap blocks are owned by the special exclude inode.
 	  Fsck checks that all (and only) snapshot file blocks are excluded.
+
+config SNAPSHOT_CHECK_LIST
+	bool "Check Next3 snapshot list on fsck"
+	help
+	  Check that all inodes on snapshot list are valid snapshots and
+	  prompt to terminate list when bad inode is found.

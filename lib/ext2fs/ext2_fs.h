@@ -33,6 +33,7 @@
 #define EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 #define EXT2FS_SNAPSHOT_CLEANUP
 #define EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+#define EXT2FS_SNAPSHOT_CHECK_LIST
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files

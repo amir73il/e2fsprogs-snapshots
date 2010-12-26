@@ -238,6 +238,11 @@ struct problem_context {
 #define PR_0_EXCLUDE_INODE_INVALID		0x000101
 
 #endif
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+/* Bas snapshot on list */
+#define PR_0_BAD_SNAPSHOT			0x000102
+
+#endif
 
 /*
  * Pass 1 errors

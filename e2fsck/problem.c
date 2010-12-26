@@ -40,7 +40,12 @@
 #define PROMPT_UNLINK	17
 #define PROMPT_CLEAR_HTREE 18
 #define PROMPT_RECREATE 19
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+#define PROMPT_TERMINATE_LIST 20
+#define PROMPT_NULL	22
+#else
 #define PROMPT_NULL	20
+#endif
 
 /*
  * These are the prompts which are used to ask the user if they want
@@ -67,7 +72,12 @@ static const char *prompt[] = {
 	N_("Unlink"),		/* 17 */
 	N_("Clear HTree index"),/* 18 */
 	N_("Recreate"),		/* 19 */
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+	N_("Terminate list"),	/* 20 */
+	"",			/* 22 */
+#else
 	"",			/* 20 */
+#endif
 };
 
 /*
@@ -342,6 +352,13 @@ static struct e2fsck_problem problem_table[] = {
 	{ PR_0_EXCLUDE_INODE_INVALID,
 	  N_("Exclude @i not valid.  "),
 	  PROMPT_RECREATE, 0 },
+
+#endif
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+	/* Bad snapshot on list */
+	{ PR_0_BAD_SNAPSHOT,
+	  N_("Bad @i found on snapshot list.  "),
+	  PROMPT_TERMINATE_LIST, PR_PREEN_OK },
 
 #endif
 	/* Last mount time is in the future */

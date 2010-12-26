@@ -517,6 +517,77 @@ void check_exclude_inode(e2fsck_t ctx)
 }
 
 #endif
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+/*
+ * Check that snapshot list contains valid snapshot files.
+ * Returns the number of valid snapshots on list.
+ *
+ * TODO: cleanup orphan snapshot files (not found on list)
+ */
+static int check_snapshot_list(e2fsck_t ctx)
+{
+	ext2_filsys fs = ctx->fs;
+	struct ext2_super_block *sb = fs->super;
+	struct ext2_inode	inode;
+	struct ext2_inode	inode_prev;
+	ext2_ino_t		ino = sb->s_snapshot_list;
+	ext2_ino_t		ino_prev = 0;
+	errcode_t		retval = 0;
+	struct problem_context	pctx;
+	int i = 0;
+	
+	if (!ino && sb->s_snapshot_inum) {
+		/* reset snapshot list head to active snapshot */
+		ino = sb->s_snapshot_list = sb->s_snapshot_inum;
+		ext2fs_mark_super_dirty(fs);
+	}
+	if (ino)
+		fputs(_("Checking snapshots: "), stderr);
+
+	while (ino) {
+		retval = ext2fs_read_inode(fs, ino,  &inode);
+		if (retval || !(inode.i_flags & EXT4_SNAPFILE_FL) ||
+				!LINUX_S_ISREG(inode.i_mode) || 
+				inode.i_dtime) {
+			if (ino == sb->s_snapshot_list) {
+				/* reset list head */
+				sb->s_snapshot_list = 0;
+				ext2fs_mark_super_dirty(fs);
+				ino = sb->s_snapshot_inum;
+				continue;
+			}
+			clear_problem_context(&pctx);
+			if (!fix_problem(ctx, PR_0_BAD_SNAPSHOT, &pctx))
+				break;
+
+			/* disconnect inode from snapshot list */
+			if (ino == sb->s_snapshot_inum) {
+				/* reset active snapshot */
+				sb->s_snapshot_inum = 0;
+				ext2fs_mark_super_dirty(fs);
+			}
+			if (ino_prev) {
+				/* terminate list at prev inode */
+				inode_prev.i_next_snapshot = 0;
+				e2fsck_write_inode(ctx, ino_prev, &inode_prev,
+						"terminate snapshot list");
+			}
+			break;
+		}
+
+		fprintf(stderr, _("%u,"), inode.i_generation);
+		inode_prev = inode;
+		ino_prev = ino;
+		ino = inode.i_next_snapshot;
+		i++;
+	}
+	
+	if (ino_prev && !ino)
+		fputs(_("done\n"), stderr);
+	return i;
+}
+
+#endif
 #ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 /*
  * This function checks if the file system has snapshots
@@ -531,6 +602,12 @@ void check_snapshots(e2fsck_t ctx)
 		/* no snapshots */
 		return;
 
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+	if (!check_snapshot_list(ctx))
+		/* no valid snapshots on list */
+		return;
+
+#endif
 	if (!sb->s_snapshot_inum)
 		/* no active snapshot */
 		return;
