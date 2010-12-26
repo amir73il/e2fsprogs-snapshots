@@ -217,3 +217,5 @@ out_free:
 	return retval;
 }
 
+#define ext2fs_group_desc(fs, gdp, grp) (gdp)+(grp)
+

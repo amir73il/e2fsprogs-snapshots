@@ -323,6 +323,15 @@ errout:
 	ext2fs_free_mem(&free_array);
 }
 
+#define blk64_t blk_t
+#define ext2fs_bg_flags_test(fs, group, flag) \
+	(fs->group_desc[group].bg_flags & flag)
+#define ext2fs_bg_flags_clear(fs, group, flag) \
+	fs->group_desc[group].bg_flags &= ~flag
+#define ext2fs_blocks_count(sb) \
+	(sb)->s_blocks_count
+#define ext2fs_fast_test_block_bitmap2 ext2fs_fast_test_block_bitmap
+
 static void check_inode_bitmaps(e2fsck_t ctx)
 {
 	ext2_filsys fs = ctx->fs;

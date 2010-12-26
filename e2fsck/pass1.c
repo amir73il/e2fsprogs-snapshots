@@ -55,6 +55,11 @@
 #define _INLINE_ inline
 #endif
 
+#define ext2fs_file_acl_block(inode) \
+	(inode)->i_file_acl
+#define ext2fs_fast_mark_block_bitmap2(map, blk) \
+	ext2fs_fast_mark_block_bitmap(map, blk)
+
 static int process_block(ext2_filsys fs, blk_t	*blocknr,
 			 e2_blkcnt_t blockcnt, blk_t ref_blk,
 			 int ref_offset, void *priv_data);
@@ -81,11 +86,11 @@ struct process_block_struct {
 	unsigned	is_dir:1, is_reg:1, clear:1, suppress:1,
 				fragmented:1, compressed:1, bbcheck:1;
 	blk64_t		num_blocks;
-	blk_t		max_blocks;
+	blk64_t		max_blocks;
 	e2_blkcnt_t	last_block;
 	e2_blkcnt_t	last_db_block;
 	int		num_illegal_blocks;
-	blk_t		previous_block;
+	blk64_t		previous_block;
 	struct ext2_inode *inode;
 	struct problem_context *pctx;
 	ext2fs_block_bitmap fs_meta_blocks;
@@ -1072,7 +1077,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		    (inode->i_block[EXT2_IND_BLOCK] ||
 		     inode->i_block[EXT2_DIND_BLOCK] ||
 		     inode->i_block[EXT2_TIND_BLOCK] ||
-		     inode->i_file_acl)) {
+		     ext2fs_file_acl_block(inode))) {
 			inodes_to_process[process_inode_count].ino = ino;
 			inodes_to_process[process_inode_count].inode = *inode;
 			process_inode_count++;

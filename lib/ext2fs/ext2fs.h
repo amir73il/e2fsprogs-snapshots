@@ -173,6 +173,8 @@ typedef struct ext2_file *ext2_file_t;
 #define EXT2_FLAG_EXCLUSIVE		0x4000
 #define EXT2_FLAG_SOFTSUPP_FEATURES	0x8000
 #define EXT2_FLAG_NOFREE_ON_ERROR	0x10000
+#define EXT2_FLAG_64BITS		0x20000
+#define EXT2_FLAG_PRINT_PROGRESS	0x40000
 #define EXT2_FLAG_DIRECT_IO		0x80000
 
 /*
@@ -188,6 +190,8 @@ typedef struct ext2_file *ext2_file_t;
  */
 #define EXT2_MKJOURNAL_V1_SUPER	0x0000001
 
+#define opaque_ext2_group_desc ext2_group_desc
+
 struct struct_ext2_filsys {
 	errcode_t			magic;
 	io_channel			io;
@@ -198,10 +202,11 @@ struct struct_ext2_filsys {
 	int				fragsize;
 	dgrp_t				group_desc_count;
 	unsigned long			desc_blocks;
-	struct ext2_group_desc *	group_desc;
+	struct opaque_ext2_group_desc *	group_desc;
 	int				inode_blocks_per_group;
 	ext2fs_inode_bitmap		inode_map;
 	ext2fs_block_bitmap		block_map;
+	/* XXX FIXME-64: not 64-bit safe, but not used? */
 	errcode_t (*get_blocks)(ext2_filsys fs, ext2_ino_t ino, blk_t *blocks);
 	errcode_t (*check_directory)(ext2_filsys fs, ext2_ino_t ino);
 	errcode_t (*write_bitmaps)(ext2_filsys fs);

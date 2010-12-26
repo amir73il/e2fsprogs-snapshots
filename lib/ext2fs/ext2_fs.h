@@ -150,6 +150,9 @@ struct ext2_group_desc
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
 
+/*
+ * Structure of a blocks group descriptor
+ */
 struct ext4_group_desc
 {
 	__u32	bg_block_bitmap;	/* Blocks bitmap block */
