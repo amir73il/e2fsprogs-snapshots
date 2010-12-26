@@ -401,6 +401,25 @@ static void remove_exclude_inode(ext2_filsys fs)
 	struct ext2_inode	inode;
 	ino_t			ino = EXT2_EXCLUDE_INO;
 	errcode_t		retval;
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+	struct ext2_group_desc *gd;
+	int i;
+
+	if (fs->super->s_feature_compat &
+	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
+		/* Remove old exclude inode */
+		ino = EXT2_EXCLUDE_INO_OLD;
+		/* Clear old exclude inode flag */
+		fs->super->s_feature_compat &=
+			~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
+		/* Reset old exclude/cow bitmap cache to zero */
+		for (i = 0; i < fs->group_desc_count; i++) {
+			gd = ext2fs_group_desc(fs, fs->group_desc, i);
+			gd->bg_exclude_bitmap_old = 0;
+			gd->bg_cow_bitmap_old = 0;
+		}
+	}
+#endif
 
 	/* clear fix_exclude flag */
 	fs->super->s_flags &= ~EXT2_FLAGS_FIX_EXCLUDE;

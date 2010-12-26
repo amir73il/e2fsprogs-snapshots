@@ -37,6 +37,7 @@
 #define EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 #define EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 #define EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+#define EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files
@@ -62,6 +63,9 @@
 #define EXT2_RESIZE_INO		 7	/* Reserved group descriptors inode */
 #define EXT2_JOURNAL_INO	 8	/* Journal inode */
 #define EXT2_EXCLUDE_INO	 9	/* The "exclude" inode, for snapshots */
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#define EXT2_EXCLUDE_INO_OLD	10	/* Old exclude inode */
+#endif
 
 /* First non-reserved inode for old ext2 filesystems */
 #define EXT2_GOOD_OLD_FIRST_INO	11
@@ -161,6 +165,11 @@ struct ext2_group_desc
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
 
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#define bg_exclude_bitmap_old bg_reserved[0]	/* Old exclude bitmap cache */
+#define bg_cow_bitmap_old bg_reserved[1]	/* Old COW bitmap cache */
+
+#endif
 /*
  * Structure of a blocks group descriptor
  */
@@ -650,6 +659,14 @@ struct ext2_super_block {
 
 #define EXT4_S_ERR_LEN (EXT4_S_ERR_END - EXT4_S_ERR_START)
 
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+/* old snapshot field positions */
+#define s_snapshot_list_old	s_reserved[151]	/* Old snapshot list head */
+#define s_snapshot_r_blocks_old	s_reserved[152] /* Old reserved for snapshot */
+#define s_snapshot_id_old	s_reserved[153]	/* Old active snapshot ID */
+#define s_snapshot_inum_old	s_reserved[154]	/* Old active snapshot inode */
+
+#endif
 /*
  * Codes for operating systems
  */
@@ -707,6 +724,10 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
 #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#define NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD	0x1000 /* Old big journal */
+#define NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD	0x2000 /* Old exclude inode */
+#endif
 
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
@@ -716,6 +737,12 @@ struct ext2_super_block {
 #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
 #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
 #define EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT	0x0080
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#define NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD 0x1000 /* Old has snapshots */
+#define NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT_OLD	0x2000 /* Old is snapshot */
+#define NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD 0x4000 /* Old fix snapshot */
+#define NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE_OLD	0x8000 /* Old fix exclude */
+#endif
 
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002

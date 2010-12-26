@@ -86,3 +86,14 @@ config SNAPSHOT_MESSAGE_BUFFER
 	  the buffer is cleared.
 	  Next3 supports only block size of 4K, so there is always 2K of free
 	  space for the message buffer after the 1K super block.
+
+config SNAPSHOT_ON_DISK_MIGRATE
+	bool "Migrate old to new on-disk format"
+	help
+	  Detect old 'has_snapshot' feature on ext2fs_open(), migrate snapshot
+	  fields and flags and set new 'has_snapshot' feature.
+	  Detect old 'exclude_inode' feature on create/check_exclude_inode(),
+	  copy old exclude inode to new exclude inode location and set the new
+	  'exclude_inode' feature.
+
+
