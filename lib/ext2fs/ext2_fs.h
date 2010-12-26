@@ -30,6 +30,7 @@
 #define EXT2FS_SNAPSHOT_BIG_JOURNAL
 #define EXT2FS_SNAPSHOT_EXCLUDE_INODE
 #define EXT2FS_SNAPSHOT_CTL
+#define EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files

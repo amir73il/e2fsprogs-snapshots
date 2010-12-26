@@ -1332,6 +1332,9 @@ print_unsupp_features:
 		fatal_error(ctx, 0);
 	check_if_skip(ctx);
 	check_resize_inode(ctx);
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+	check_snapshots(ctx);
+#endif
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	check_exclude_inode(ctx);
 #endif

@@ -482,6 +482,9 @@ void check_resize_inode(e2fsck_t ctx);
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 void check_exclude_inode(e2fsck_t ctx);
 #endif
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+void check_snapshots(e2fsck_t ctx);
+#endif
 
 /* util.c */
 extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,

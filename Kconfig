@@ -31,3 +31,12 @@ config SNAPSHOT_CTL
 	  Take/delete snapshot with chattr -X +/-S.
 	  Enable/disable snapshot with chattr -X +/-n.
 	  View snapshot status with lsattr -X.
+
+config SNAPSHOT_HAS_SNAPSHOT
+	bool "Avoid offline modifications to a file system with snapshots"
+	help
+	  Next3 sets the read-only compatible feature 'has_snapshot',
+	  so the file system could be mounted with Ext3 only in read-only mode
+	  to protect the snapshots.
+	  Fsck displays a warning about possible corruption of the snapshots
+	  in interactive mode and avoids freeing blocks in preen mode.

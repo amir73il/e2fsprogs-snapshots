@@ -293,6 +293,12 @@ redo_counts:
 	} else if (fixit == 0)
 		ext2fs_unmark_valid(fs);
 
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+	if (fs->super->s_flags & EXT2_FLAGS_IS_SNAPSHOT)
+		/* ignore free block counts in next3 snapshot image */
+		goto errout;
+
+#endif
 	for (i = 0; i < fs->group_desc_count; i++) {
 		if (free_array[i] != fs->group_desc[i].bg_free_blocks_count) {
 			pctx.group = i;

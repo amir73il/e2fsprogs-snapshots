@@ -452,6 +452,19 @@ int main (int argc, char ** argv)
 	if (mount_flags & EXT2_MF_MOUNTED) {
 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
 	} else {
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+		/* do not offline resize a volume with active snapshot */
+		if (!force && (fs->super->s_feature_ro_compat &
+					EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) &&
+				fs->super->s_snapshot_inum) {
+			fprintf(stderr,
+				_("offline resize will damage next3 snapshots "
+					"on %s - Please mount the filesystem "
+					"for online resize.\n\n"),
+				device_name);
+			exit(1);
+		}
+#endif
 		if (!force && ((fs->super->s_lastcheck < fs->super->s_mtime) ||
 			       (fs->super->s_state & EXT2_ERROR_FS) ||
 			       ((fs->super->s_state & EXT2_VALID_FS) == 0))) {
