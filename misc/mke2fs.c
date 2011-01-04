@@ -1193,6 +1193,10 @@ static void PRS(int argc, char *argv[])
 			/* 3. create exclude inode */
 			edit_feature("exclude_inode", &fs_param.s_feature_compat);
 #endif
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+			/* 4. enable snapshot support */
+			edit_feature("has_snapshot", &fs_param.s_feature_ro_compat);
+#endif
 		}
 #endif
 	}

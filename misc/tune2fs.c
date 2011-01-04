@@ -570,10 +570,6 @@ static void update_feature_set(ext2_filsys fs, char *features)
 	/* disallow changing features when filesystem has snapshots */
 	if (sb->s_feature_ro_compat & 
 		EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT) {
-		fputs(_("The filesystem has snapshots.  "
-				"Please clear the has_snapshot flag\n"
-				"before clearing/setting other filesystem flags.\n"), 
-				stderr);
 		ok_features[E2P_FEATURE_COMPAT] = 0;
 		ok_features[E2P_FEATURE_INCOMPAT] = 0;
 		ok_features[E2P_FEATURE_RO_INCOMPAT] =
@@ -592,6 +588,14 @@ static void update_feature_set(ext2_filsys fs, char *features)
 			fprintf(stderr,
 				_("Invalid filesystem option set: %s\n"),
 				features);
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+		else if (old_features[E2P_FEATURE_RO_INCOMPAT] & 
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)
+			fputs(_("The filesystem has snapshots.  "
+						"Please clear the has_snapshot flag\n"
+						"before clearing/setting other filesystem flags.\n"), 
+					stderr);
+#endif
 		else if (type_err & E2P_FEATURE_NEGATE_FLAG)
 			fprintf(stderr, _("Clearing filesystem feature '%s' "
 					  "not supported.\n"),
