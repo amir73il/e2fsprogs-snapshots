@@ -100,7 +100,8 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 	if (do_exclude) {
 		block_nbytes = EXT2_BLOCKS_PER_GROUP(fs->super) / 8;
-		retval = ext2fs_get_mem(fs->blocksize, &exclude_buf);
+		retval = ext2fs_get_memalign(fs->blocksize, fs->blocksize,
+					     &exclude_buf);
 		if (retval)
 			return retval;
 		memset(exclude_buf, 0xff, fs->blocksize);
@@ -292,8 +293,12 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
 		retval = ext2fs_allocate_block_bitmap(fs, buf, &fs->exclude_map);
 		if (retval)
 			goto cleanup;
-		retval = ext2fs_get_mem(do_image ? fs->blocksize :
-					(unsigned) block_nbytes, &exclude_bitmap);
+		if (do_image)
+			retval = ext2fs_get_mem(fs->blocksize, &exclude_bitmap);
+		else
+			retval = ext2fs_get_memalign((unsigned) block_nbytes,
+						     fs->blocksize,
+						     &exclude_bitmap);	
 		if (retval)
 			goto cleanup;
 	}

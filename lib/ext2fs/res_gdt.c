@@ -284,11 +284,13 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 
 	if (fs->exclude_blks)
 		ext2fs_free_mem(&fs->exclude_blks);
-	retval = ext2fs_get_array(fs->group_desc_count, fs->blocksize,
+	retval = ext2fs_get_array(fs->group_desc_count,
+			sizeof(fs->exclude_blks[0]),
 			&fs->exclude_blks);
 	if (retval)
 		goto out_free;
-	memset(fs->exclude_blks, 0, fs->group_desc_count*fs->blocksize);
+	memset(fs->exclude_blks, 0, fs->group_desc_count *
+			sizeof(fs->exclude_blks[0]));
 
 #ifdef EXCLUDE_INO_PROGRESS
 	printf("Reserving exclude bitmap blocks:            ");
