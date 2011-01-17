@@ -502,8 +502,10 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
 	if ((inode.i_flags & EXT4_SNAPFILE_FL) && LINUX_S_ISREG(inode.i_mode)) {
 		/* iterate snapshot file extra triple indirect blocks */
 		for (i = 0; i < NEXT3_EXTRA_TIND_BLOCKS; i++) {
+			if (!inode.i_block[i] && !(flags & BLOCK_FLAG_APPEND))
+				continue;
 			ret |= block_iterate_tind(&inode.i_block[i],
-						  0, EXT2_N_BLOCKS+i, &ctx);
+					0, EXT2_N_BLOCKS+i, &ctx);
 			if (ret & BLOCK_ABORT)
 				goto abort_exit;
 		}
