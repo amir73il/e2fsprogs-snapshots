@@ -1288,6 +1288,8 @@ static void PRS(int argc, char *argv[])
 			journal_size = -NEXT3_MAX_COW_CREDITS;
 			/* 2. use system page size as block size */
 			blocksize = sys_page_size;
+			fs_param.s_log_block_size =
+				int_log2(blocksize >> EXT2_MIN_BLOCK_LOG_SIZE);
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 			/* 3. create exclude inode */
 			edit_feature("exclude_inode", &fs_param.s_feature_compat);
