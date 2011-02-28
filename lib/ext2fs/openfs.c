@@ -200,11 +200,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 	}
 
 #ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+	io_flags = 0;
 	/* Migrate super from old to new Next3 on-disk format */
 	if ((fs->super->s_feature_ro_compat &
-			NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD) &&
-		!(fs->super->s_feature_ro_compat &
-			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
+				NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD) &&
+			!(fs->super->s_feature_ro_compat &
+				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT)) {
 		struct ext2_super_block *sb = fs->super;
 
 		/* Copy snapshot fields to new positions */
@@ -219,11 +220,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 		sb->s_snapshot_list_old = 0;
 		/* Copy snapshot flags to new positions */
 		fs->super->s_feature_ro_compat |=
-				EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
-		if (fs->super->s_feature_compat &
-				NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD)
-			fs->super->s_feature_compat |=
-				EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
+			EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT;
 		if (fs->super->s_feature_ro_compat &
 				NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD)
 			fs->super->s_flags |= EXT2_FLAGS_FIX_SNAPSHOT;
@@ -232,18 +229,29 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
 			fs->super->s_flags |= EXT2_FLAGS_FIX_EXCLUDE;
 		/* Clear old snapshot flags */
 		fs->super->s_feature_ro_compat &=
-				~(NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD|
-				NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT_OLD|
-				NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD|
-				NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE_OLD);
-		/* Clear deprecated big journal flag */
-		fs->super->s_feature_compat &=
-				~NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD;
-		/* Keep old exclude inode flag b/c inode was not moved yet */
-		if (flags & EXT2_FLAG_RW)
-			/* in read-only mode just convert the in-memory copy */
-			ext2fs_mark_super_dirty(fs);
+			~(NEXT3_FEATURE_RO_COMPAT_HAS_SNAPSHOT_OLD|
+					NEXT3_FEATURE_RO_COMPAT_IS_SNAPSHOT_OLD|
+					NEXT3_FEATURE_RO_COMPAT_FIX_SNAPSHOT_OLD|
+					NEXT3_FEATURE_RO_COMPAT_FIX_EXCLUDE_OLD);
+		io_flags = EXT2_FLAG_RW;
 	}
+	if (fs->super->s_feature_compat &
+			NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
+		fs->super->s_feature_compat |=
+			EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
+		/* Keep old exclude inode flag b/c inode was not moved yet */
+		io_flags = EXT2_FLAG_RW;
+	}
+	/* Clear deprecated big journal flag */
+	if (fs->super->s_feature_compat &
+			NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD) {
+		fs->super->s_feature_compat &=
+			~NEXT3_FEATURE_COMPAT_BIG_JOURNAL_OLD;
+		io_flags = EXT2_FLAG_RW;
+	}
+	if (flags & io_flags)
+		/* in read-only mode just convert the in-memory copy */
+		ext2fs_mark_super_dirty(fs);
 
 #endif
 	/*
