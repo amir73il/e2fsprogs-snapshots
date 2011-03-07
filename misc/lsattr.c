@@ -193,6 +193,7 @@ int main (int argc, char ** argv)
 #ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 			case 'X':
 				/* for backward compatibility with next3 */
+				pf_options &= ~PFOPT_SNAPSHOT;
 				pf_options |= PFOPT_SNAPSHOT_X;
 				break;
 #endif
