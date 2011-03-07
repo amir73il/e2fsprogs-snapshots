@@ -86,18 +86,20 @@ static unsigned long sf;
 static void usage(void)
 {
 #ifdef EXT2FS_SNAPSHOT_CTL
-	fprintf(stderr, chsnap ?
-		_("Usage: %s [-+=let] snapshot files...\n") :
-		_("Usage: %s [-RVf] [-+=AacDdeijsSux] [-v version] files...\n"),
-		program_name);
-	fprintf(stderr,
-		_("Usage: %s -X [-+=Snt] snapshot files...\n"),
-		program_name);
+	if (chsnap) {
+		fprintf(stderr,
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+			_("Usage: %s [-X] [-+=Sn] snapshot files...\n"),
 #else
+			_("Usage: %s [-+=Sn] snapshot files...\n"),
+#endif
+			program_name);
+		exit(1);
+	}
+#endif
 	fprintf(stderr,
 		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
 		program_name);
-#endif
 	exit(1);
 }
 
@@ -133,22 +135,22 @@ static const struct flags_char flags_array[] = {
 #ifdef EXT2FS_SNAPSHOT_CTL
 static const struct flags_char *flags_array = ext2_flags_array;
 
-/* Traditional snapshot flags */
+/* Snapshot dynamic state flags */
 static struct flags_char snapshot_flags_array[] = {
-	{ NEXT3_SNAPFILE_LIST_FL, 'l' },
-	{ NEXT3_SNAPFILE_ENABLED_FL, 'e' },
-	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
+	{ EXT4_SNAPSHOT_LIST_FL, 'S' },
+	{ EXT4_SNAPSHOT_ENABLED_FL, 'n' },
 	{ 0, 0 }
 };
 
-/* Cool 'Snapshot' flags */
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+/* Old snapshot flags for backward compatibility with next3 */
 static struct flags_char snapshot_X_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
 	{ NEXT3_SNAPFILE_ENABLED_FL, 'n' },
-	{ NEXT3_SNAPFILE_TAGGED_FL, 't' },
 	{ 0, 0 }
 };
 
+#endif
 #endif
 static unsigned long get_flag(char c)
 {
@@ -172,7 +174,7 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
-#ifdef EXT2FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 			if (*p == 'X') {
 				flags_array = snapshot_X_flags_array;
 				continue;

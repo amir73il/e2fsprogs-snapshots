@@ -28,15 +28,25 @@
 #define PFOPT_LONG  1 /* Must be 1 for compatibility with `int long_format'. */
 #ifdef EXT2FS_SNAPSHOT_CTL
 #define PFOPT_SNAPSHOT  2 /* list/control snapshot flags */
-#define PFOPT_SNAPSHOT_X 4 /* -X option for 'Snapshot' flags */
+#define PFOPT_SNAPSHOT_X  4 /* for backward compatibility with next3 */
+
+int fgetpflags(const char * name, unsigned long * flags, unsigned pf_options);
 
 /*
- * snapshot status/control flags for lsattr/chattr -X.
- * reusing compression flags on the GET/SETFLAGS ioctl for snapshot control API.
- * all the flags below are either read-only on-disk inode flags (deleted and
- * shrunk) or in-memory inode status flags (the rest).
- * TODO: implement new ioctls for snapshot status/control.
+ * Snapshot status/control flags for lssnap/chsnap.
+ * All the flags below are read from ext4 dynamic inode state flags.
  */
+#define EXT4_SNAPSHOT_LIST_FL		0x00000100 /* snapshot is on-list (S)*/
+#define EXT4_SNAPSHOT_ENABLED_FL	0x00000200 /* snapshot is enabled (n)*/
+#define EXT4_SNAPSHOT_ACTIVE_FL		0x00000400 /* snapshot is active  (a)*/
+#define EXT4_SNAPSHOT_INUSE_FL		0x00000800 /* snapshot is in-use  (p)*/
+#define EXT4_SNAPSHOT_DELETED_FL	0x00001000 /* snapshot is deleted (s)*/
+#define EXT4_SNAPSHOT_SHRUNK_FL		0x00002000 /* snapshot is shrunk  (h)*/
+#define EXT4_SNAPSHOT_OPEN_FL		0x00004000 /* snapshot is mounted (o)*/
+#define EXT4_SNAPSHOT_TAGGED_FL		0x00008000 /* snapshot is tagged  (t)*/
+
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+/* Old snapshot flags for backward compatibility with next3 */
 #define NEXT3_SNAPFILE_LIST_FL		0x00000100 /* snapshot is on list */
 #define NEXT3_SNAPFILE_ENABLED_FL	0x00000200 /* snapshot is enabled */
 #define NEXT3_SNAPFILE_ACTIVE_FL	0x00000400 /* snapshot is active */
@@ -45,7 +55,11 @@
 #define NEXT3_SNAPFILE_SHRUNK_FL	0x08000000 /* snapshot is shrunk */
 #define NEXT3_SNAPFILE_OPEN_FL		0x10000000 /* snapshot is mounted */
 #define NEXT3_SNAPFILE_TAGGED_FL	0x20000000 /* snapshot is tagged */
+
 #endif
+#endif
+
+
 
 
 int fgetflags (const char * name, unsigned long * flags);

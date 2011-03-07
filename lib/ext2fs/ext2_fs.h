@@ -358,6 +358,9 @@ struct ext4_new_group_input {
 #define EXT2_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
 #define EXT2_IOC_GROUP_ADD		_IOW('f', 8,struct ext2_new_group_input)
 #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
+#ifdef EXT2FS_SNAPSHOT_CTL
+#define EXT2_IOC_GETSNAPFLAGS		_IOR('f', 13, long)
+#endif
 
 /*
  * Structure of an inode on the disk

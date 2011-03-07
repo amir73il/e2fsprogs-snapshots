@@ -70,7 +70,7 @@ static int generation_opt;
 
 static void usage(void)
 {
-#ifdef EXT2FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	fprintf(stderr, _("Usage: %s [-XRVadlv] [files...]\n"), program_name);
 #else
 	fprintf(stderr, _("Usage: %s [-RVadlv] [files...]\n"), program_name);
@@ -83,7 +83,11 @@ static int list_attributes (const char * name)
 	unsigned long flags;
 	unsigned long generation;
 
+#ifdef EXT2FS_SNAPSHOT_CTL
+	if (fgetpflags (name, &flags, pf_options) == -1) {
+#else
 	if (fgetflags (name, &flags) == -1) {
+#endif
 		com_err (program_name, errno, _("While reading flags on %s"),
 			 name);
 		return -1;
@@ -178,14 +182,17 @@ int main (int argc, char ** argv)
 	if (i >= 6 && !strcmp(program_name + i - 6, "lssnap"))
 		pf_options |= PFOPT_SNAPSHOT;
 
+#endif
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 	while ((c = getopt (argc, argv, "XRVadlv")) != EOF)
 #else
 	while ((c = getopt (argc, argv, "RVadlv")) != EOF)
 #endif
 		switch (c)
 		{
-#ifdef EXT2FS_SNAPSHOT_CTL
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
 			case 'X':
+				/* for backward compatibility with next3 */
 				pf_options |= PFOPT_SNAPSHOT_X;
 				break;
 #endif

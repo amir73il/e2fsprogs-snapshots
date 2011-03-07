@@ -55,20 +55,21 @@ static struct flags_name flags_array[] = {
 };
 
 #ifdef EXT2FS_SNAPSHOT_CTL
-/* Traditional snapshot flags */
+/* Snapshot dynamic state flags */
 static struct flags_name snapshot_flags_array[] = {
-	{ NEXT3_SNAPFILE_LIST_FL, "l", "on_List" },
-	{ NEXT3_SNAPFILE_ENABLED_FL, "e", "Enabled" },
-	{ NEXT3_SNAPFILE_ACTIVE_FL, "a", "Active" },
-	{ NEXT3_SNAPFILE_INUSE_FL, "i", "Inuse_by_previous" },
-	{ NEXT3_SNAPFILE_DELETED_FL, "d", "Deleted" },
-	{ NEXT3_SNAPFILE_SHRUNK_FL, "s", "Shrunk" },
-	{ NEXT3_SNAPFILE_OPEN_FL, "m", "Mounted" },
-	{ NEXT3_SNAPFILE_TAGGED_FL, "t", "Tagged" },
+	{ EXT4_SNAPSHOT_LIST_FL, "S", "on_liSt" },
+	{ EXT4_SNAPSHOT_ENABLED_FL, "n", "eNabled" },
+	{ EXT4_SNAPSHOT_ACTIVE_FL, "a", "Active" },
+	{ EXT4_SNAPSHOT_INUSE_FL, "p", "inuse_by_Previous" },
+	{ EXT4_SNAPSHOT_DELETED_FL, "s", "Deleted" },
+	{ EXT4_SNAPSHOT_SHRUNK_FL, "h", "sHrunk" },
+	{ EXT4_SNAPSHOT_OPEN_FL, "o", "mOunted" },
+	{ EXT4_SNAPSHOT_TAGGED_FL, "t", "Tagged" },
 	{ 0, NULL, NULL }
 };
 
-/* Cool 'Snapshot' flags */
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+/* Old snapshot flags for backward compatibility with next3 */
 static struct flags_name snapshot_X_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },
 	{ NEXT3_SNAPFILE_ENABLED_FL, "n", "eNabled" },
@@ -81,6 +82,7 @@ static struct flags_name snapshot_X_flags_array[] = {
 	{ 0, NULL, NULL }
 };
 
+#endif
 #endif
 void print_flags (FILE * f, unsigned long flags, unsigned options)
 {
