@@ -40,10 +40,10 @@
 #define OPEN_FLAGS (O_RDONLY|O_NONBLOCK)
 #endif
 
-#if HAVE_STAT_FLAGS && !(APPLE_DARWIN && HAVE_EXT2_IOCTLS)
-int fgetflags (const char * name, unsigned long * flags)
+static int fgetflags_ioctl(const char * name, unsigned long * flags, int ioc)
 {
 	struct stat buf;
+#if HAVE_STAT_FLAGS && !(APPLE_DARWIN && HAVE_EXT2_IOCTLS)
 
 	if (stat (name, &buf) == -1)
 		return -1;
@@ -63,12 +63,8 @@ int fgetflags (const char * name, unsigned long * flags)
 #endif
 
 	return 0;
-}
 #else
 #if HAVE_EXT2_IOCTLS
-static int fgetflags_ioctl(const char * name, unsigned long * flags, int ioc)
-{
-	struct stat buf;
 	int fd, r, f, save_errno = 0;
 
 	if (!lstat(name, &buf) &&
@@ -88,30 +84,24 @@ static int fgetflags_ioctl(const char * name, unsigned long * flags, int ioc)
 		errno = save_errno;
 	return r;
 #else
-   f = -1;
-   save_errno = syscall(SYS_fsctl, name, ioc, &f, 0);
-   *flags = f;
-   return (save_errno);
+	f = -1;
+	save_errno = syscall(SYS_fsctl, name, ioc, &f, 0);
+	*flags = f;
+	return (save_errno);
+#endif
+#endif /* HAVE_EXT2_IOCTLS */
 #endif
 notsupp:
-#else
-int fgetflags (const char * name, unsigned long * flags)
-{
-#endif /* HAVE_EXT2_IOCTLS */
 	errno = EOPNOTSUPP;
 	return -1;
 }
-#endif
 
-#if HAVE_EXT2_IOCTLS
 int fgetflags(const char * name, unsigned long * flags)
 {
 	return fgetflags_ioctl(name, flags, EXT2_IOC_GETFLAGS);
 }
-#endif
 
 #ifdef EXT2FS_SNAPSHOT_CTL
-#if HAVE_EXT2_IOCTLS
 int fgetpflags(const char * name, unsigned long * flags, unsigned pf_options)
 {
 	int ioc = (pf_options & PFOPT_SNAPSHOT) ? EXT2_IOC_GETSNAPFLAGS :
@@ -119,6 +109,5 @@ int fgetpflags(const char * name, unsigned long * flags, unsigned pf_options)
 
 	return fgetflags_ioctl(name, flags, ioc);
 }
-#endif
-#endif
 
+#endif
