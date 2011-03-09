@@ -82,10 +82,16 @@ static int list_attributes (const char * name)
 {
 	unsigned long flags;
 	unsigned long generation;
-
 #ifdef EXT2FS_SNAPSHOT_CTL
-	if (fgetpflags (name, &flags, pf_options) == -1) {
+	int ret;
+
+	if (pf_options & PFOPT_SNAPSHOT)
+		ret = fgetsnapflags (name, &flags);
+	else
+		ret = fgetflags (name, &flags);
+	if (ret == -1) {
 #else
+
 	if (fgetflags (name, &flags) == -1) {
 #endif
 		com_err (program_name, errno, _("While reading flags on %s"),

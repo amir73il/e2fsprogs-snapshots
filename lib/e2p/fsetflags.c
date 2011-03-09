@@ -49,7 +49,7 @@
 #define OPEN_FLAGS (O_RDONLY|O_NONBLOCK)
 #endif
 
-int fsetflags (const char * name, unsigned long flags)
+int fsetflags_ioctl(const char * name, unsigned long flags, int ioc)
 {
 	struct stat buf;
 #if HAVE_CHFLAGS && !(APPLE_DARWIN && HAVE_EXT2_IOCTLS)
@@ -82,15 +82,15 @@ int fsetflags (const char * name, unsigned long flags)
 	if (fd == -1)
 		return -1;
 	f = (int) flags;
-	r = ioctl (fd, EXT2_IOC_SETFLAGS, &f);
+	r = ioctl (fd, ioc, &f);
 	if (r == -1)
 		save_errno = errno;
 	close (fd);
 	if (save_errno)
 		errno = save_errno;
 #else
-   f = (int) flags;
-   return syscall(SYS_fsctl, name, EXT2_IOC_SETFLAGS, &f, 0);
+	f = (int) flags;
+	return syscall(SYS_fsctl, name, ioc, &f, 0);
 #endif
 	return r;
 #endif /* HAVE_EXT2_IOCTLS */
@@ -99,3 +99,16 @@ notsupp:
 	errno = EOPNOTSUPP;
 	return -1;
 }
+
+int fsetflags(const char * name, unsigned long flags)
+{
+	return fsetflags_ioctl(name, flags, EXT2_IOC_SETFLAGS);
+}
+
+#ifdef EXT2FS_SNAPSHOT_CTL
+int fsetsnapflags(const char * name, unsigned long flags)
+{
+	return fsetflags_ioctl(name, flags, EXT2_IOC_SETSNAPFLAGS);
+}
+
+#endif

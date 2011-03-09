@@ -137,8 +137,8 @@ static const struct flags_char *flags_array = ext2_flags_array;
 
 /* Snapshot dynamic state flags */
 static struct flags_char snapshot_flags_array[] = {
-	{ EXT4_SNAPSHOT_LIST_FL, 'S' },
-	{ EXT4_SNAPSHOT_ENABLED_FL, 'n' },
+	{ 1UL<<EXT4_SNAPSHOT_LIST, 'S' },
+	{ 1UL<<EXT4_SNAPSHOT_ENABLED, 'n' },
 	{ 0, 0 }
 };
 
@@ -242,6 +242,9 @@ static int change_attributes(const char * name)
 	unsigned long flags;
 	STRUCT_STAT	st;
 	int extent_file = 0;
+#ifdef EXT2FS_SNAPSHOT_CTL
+	int ret;
+#endif
 
 	if (LSTAT (name, &st) == -1) {
 		if (!silent)
@@ -250,7 +253,15 @@ static int change_attributes(const char * name)
 		return -1;
 	}
 
+#ifdef EXT2FS_SNAPSHOT_CTL
+	if (chsnap)
+		ret = fgetsnapflags (name, &flags);
+	else
+		ret = fgetflags (name, &flags);
+	if (ret == -1) {
+#else
 	if (fgetflags(name, &flags) == -1) {
+#endif
 		if (!silent)
 			com_err(program_name, errno,
 					_("while reading flags on %s"), name);
@@ -271,7 +282,15 @@ static int change_attributes(const char * name)
 			print_flags (stdout, sf, 0);
 			printf ("\n");
 		}
+#ifdef EXT2FS_SNAPSHOT_CTL
+		if (chsnap)
+			ret = fsetsnapflags (name, sf);
+		else
+			ret = fsetflags (name, sf);
+		if (ret == -1)
+#else
 		if (fsetflags (name, sf) == -1)
+#endif
 			perror (name);
 	} else {
 		if (rem)
@@ -292,7 +311,15 @@ static int change_attributes(const char * name)
 		}
 		if (!S_ISDIR(st.st_mode))
 			flags &= ~EXT2_DIRSYNC_FL;
+#ifdef EXT2FS_SNAPSHOT_CTL
+		if (chsnap)
+			ret = fsetsnapflags (name, flags);
+		else
+			ret = fsetflags (name, flags);
+		if (ret == -1) {
+#else
 		if (fsetflags(name, flags) == -1) {
+#endif
 			if (!silent) {
 				com_err(program_name, errno,
 						_("while setting flags on %s"),

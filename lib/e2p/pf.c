@@ -57,14 +57,14 @@ static struct flags_name flags_array[] = {
 #ifdef EXT2FS_SNAPSHOT_CTL
 /* Snapshot dynamic state flags */
 static struct flags_name snapshot_flags_array[] = {
-	{ EXT4_SNAPSHOT_LIST_FL, "S", "on_liSt" },
-	{ EXT4_SNAPSHOT_ENABLED_FL, "n", "eNabled" },
-	{ EXT4_SNAPSHOT_ACTIVE_FL, "a", "Active" },
-	{ EXT4_SNAPSHOT_INUSE_FL, "p", "inuse_by_Previous" },
-	{ EXT4_SNAPSHOT_DELETED_FL, "s", "Deleted" },
-	{ EXT4_SNAPSHOT_SHRUNK_FL, "h", "sHrunk" },
-	{ EXT4_SNAPSHOT_OPEN_FL, "o", "mOunted" },
-	{ EXT4_SNAPSHOT_TAGGED_FL, "t", "Tagged" },
+	{ 1UL<<EXT4_SNAPSHOT_LIST, "S", "on_liSt" },
+	{ 1UL<<EXT4_SNAPSHOT_ENABLED, "n", "eNabled" },
+	{ 1UL<<EXT4_SNAPSHOT_ACTIVE, "a", "Active" },
+	{ 1UL<<EXT4_SNAPSHOT_INUSE, "p", "inuse_by_Previous" },
+	{ 1UL<<EXT4_SNAPSHOT_DELETED, "s", "Deleted" },
+	{ 1UL<<EXT4_SNAPSHOT_SHRUNK, "h", "sHrunk" },
+	{ 1UL<<EXT4_SNAPSHOT_OPEN, "o", "mOunted" },
+	{ 1UL<<EXT4_SNAPSHOT_TAGGED, "t", "Tagged" },
 	{ 0, NULL, NULL }
 };
 

@@ -102,12 +102,9 @@ int fgetflags(const char * name, unsigned long * flags)
 }
 
 #ifdef EXT2FS_SNAPSHOT_CTL
-int fgetpflags(const char * name, unsigned long * flags, unsigned pf_options)
+int fgetsnapflags(const char * name, unsigned long * flags)
 {
-	int ioc = (pf_options & PFOPT_SNAPSHOT) ? EXT2_IOC_GETSNAPFLAGS :
-		EXT2_IOC_GETFLAGS;
-
-	return fgetflags_ioctl(name, flags, ioc);
+	return fgetflags_ioctl(name, flags, EXT2_IOC_GETSNAPFLAGS);
 }
 
 #endif

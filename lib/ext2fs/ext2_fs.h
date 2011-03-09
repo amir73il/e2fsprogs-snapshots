@@ -360,6 +360,37 @@ struct ext4_new_group_input {
 #define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
 #ifdef EXT2FS_SNAPSHOT_CTL
 #define EXT2_IOC_GETSNAPFLAGS		_IOR('f', 13, long)
+#define EXT2_IOC_SETSNAPFLAGS		_IOW('f', 14, long)
+
+/*
+ * Snapshot status/control flags for lssnap/chsnap.
+ * The flags below must appear in the same order as they do in ext4 dynamic
+ * inode state flags enum. GETSNAPFLAGS ioctl shifts them down to lower 8 bits.
+ */
+enum {
+	EXT4_SNAPSHOT_LIST,		/* snapshot is on list (S) */
+	EXT4_SNAPSHOT_ENABLED,		/* snapshot is enabled (n) */
+	EXT4_SNAPSHOT_ACTIVE,		/* snapshot is active  (a) */
+	EXT4_SNAPSHOT_INUSE,		/* snapshot is in-use  (p) */
+	EXT4_SNAPSHOT_DELETED,		/* snapshot is deleted (s) */
+	EXT4_SNAPSHOT_SHRUNK,		/* snapshot was shrunk (h) */
+	EXT4_SNAPSHOT_OPEN,		/* snapshot is mounted (o) */
+	EXT4_SNAPSHOT_TAGGED,		/* snapshot is tagged  (t) */
+};
+
+
+#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+/* Old snapshot flags for backward compatibility with next3 */
+#define NEXT3_SNAPFILE_LIST_FL		0x00000100 /* snapshot is on list */
+#define NEXT3_SNAPFILE_ENABLED_FL	0x00000200 /* snapshot is enabled */
+#define NEXT3_SNAPFILE_ACTIVE_FL	0x00000400 /* snapshot is active */
+#define NEXT3_SNAPFILE_INUSE_FL		0x00000800 /* snapshot is in-use */
+#define NEXT3_SNAPFILE_DELETED_FL	0x04000000 /* snapshot is deleted */
+#define NEXT3_SNAPFILE_SHRUNK_FL	0x08000000 /* snapshot is shrunk */
+#define NEXT3_SNAPFILE_OPEN_FL		0x10000000 /* snapshot is mounted */
+#define NEXT3_SNAPFILE_TAGGED_FL	0x20000000 /* snapshot is tagged */
+
+#endif
 #endif
 
 /*
