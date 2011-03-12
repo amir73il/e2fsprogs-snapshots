@@ -1,0 +1,763 @@
+#!/bin/sh
+#
+# Written by Amir Goldstein <amir73il@users.sf.net>, 2008
+# Copyright (C) 2008-2010 CTERA Networks
+#
+# Next4 snapshot management script
+#
+
+SCRIPT_NAME=$(basename $0)
+SCRIPT_VER=1.0.13-5
+SCRIPT_DESC="Next4 snapshot management script"
+# fs/module name = script name
+FSTYPE=$SCRIPT_NAME
+
+# generic e2fs progs
+FSCK=e2fsck
+MKFS=mke2fs
+TUNEFS=tune2fs
+LSSNAP="lssnap"
+CHSNAP="chsnap"
+CHATTR=chattr
+
+# override generic e2fs progs with installed e2fs.$FSTYPE progs in /sbin fodler
+# and override those with private built e2fs.$FSTYPE progs in ./bin folder
+for dir in /sbin ./bin ; do
+if [ -f $dir/fsck.$FSTYPE ] ; then
+	FSCK=$dir/fsck.$FSTYPE
+fi
+if [ -f $dir/mkfs.$FSTYPE ] ; then
+	MKFS=$dir/mkfs.$FSTYPE
+fi
+if [ -f $dir/tunefs.$FSTYPE ] ; then
+	TUNEFS=$dir/tunefs.$FSTYPE
+fi
+if [ -f $dir/lssnap ] ; then
+	LSSNAP=$dir/lssnap
+elif [ -f $dir/lsattr.$FSTYPE ] ; then
+	LSSNAP="$dir/lsattr.$FSTYPE -X"
+fi
+if [ -f $dir/chsnap ] ; then
+	CHSNAP=$dir/chsnap
+elif [ -f $dir/chattr.$FSTYPE ] ; then
+	CHSNAP="$dir/chattr.$FSTYPE -X"
+fi
+if [ -f $dir/chattr.$FSTYPE ] ; then
+	CHATTR=$dir/chattr.$FSTYPE
+fi
+done 
+
+if [ $# -ge 2 ] && [ $1 != help ] && [ $1_$2 != $1_help ] && [ $1 != config ] && \
+	[ $1 != version ] && [ $1 != debug ] && [ $1 != delay ] && [ _$1 != _test ] && [ $1 != tests ] ; then
+	# parse [[next-mount@]snapshot-name] or next4-mount or next4-device argument
+	s=$( echo $2 | ( IFS=$IFS@ ; read a b ; echo $b ) )
+	if [ -z $s ] ; then
+		# check if argument is a next4 mount point
+		dev=$( cat /proc/mounts | while read a b c d ; do ( [ _$b = _$2 ] && [ _$c = _$FSTYPE ] && echo $a ) ; done )
+		if [ ! -z $dev ] ; then
+			# found next4 mount point
+			NEXT4MNT=$2
+			NEXT4DEV=$dev
+		elif [ -b $2 ] || [ $1 = mkfs ] || [ $1 = on ] || [ $1 = off ] ; then
+			# argument is a next4 block device
+			NEXT4DEV=$2
+			NEXT4MNT=$3
+		else
+			# snapshot name was given without next4 mount point
+			s=$2
+		fi
+	else
+		# snapshot name is prepended with next4 mount point
+		NEXT4MNT=$( echo $2 | ( IFS=$IFS@ ; read a b ; echo $a ) )
+		# find next4 block device from next4 mount point
+		NEXT4DEV=$( cat /proc/mounts | while read a b c d ; do ( [ _$b = _$NEXT4MNT ] && [ _$c = _$FSTYPE ] && echo $a ) ; done )
+		if [ -z $NEXT4DEV ] ; then
+			echo "$0 $1 $2: $NEXT4MNT is not a mounted $FSTYPE filesystem!"
+			exit 1
+		fi
+		# strip / from snapshot name
+		s=$( echo $s | ( IFS=$IFS/ ; read a b ; echo $a ) )
+	fi
+fi
+
+SYSDEBUGDIR=/sys/kernel/debug
+SNAPDEBUGDIR=$SYSDEBUGDIR/$FSTYPE
+
+# default debug-level is old-debug-level
+if [ ! -d $SNAPDEBUGDIR ] ; then
+	mount -t debugfs debugfs $SYSDEBUGDIR 2> /dev/null
+fi
+if [ -e $SNAPDEBUGDIR/snapshot-debug ] ; then
+	L=$(cat $SNAPDEBUGDIR/snapshot-debug 2> /dev/null)
+	if [ -z $2 ] ; then
+		l=$L
+	else
+		l=$2
+	fi
+else
+	L=0
+	l=0
+fi
+# check if test read is enabled
+if [ -e $SNAPDEBUGDIR/test-read-delay-msec ] ; then
+	test_read=$(cat $SNAPDEBUGDIR/test-read-delay-msec)
+else
+	test_read=0
+fi
+
+# read next4 block device and mount point from conf file
+CONFFILE=.$FSTYPE.conf
+
+# look for snapshot config file in current then home directory
+if [ -z $NEXT4DEV ] && [ -z $NEXT4MNT ] ; then
+	if [ -f ./$CONFFILE ] ; then
+		. ./$CONFFILE
+	elif [ -f ~/$CONFFILE ] ; then
+		. ~/$CONFFILE
+	elif [ $( mount -t $FSTYPE | grep -v noload | wc -l ) = 1 ] ; then
+		# exactly one mounted next4 filesystem found (mounted snapshots excluded)
+		NEXT4DEV=$( mount -t $FSTYPE | grep -v noload | ( read a b c d ; echo $a ) )
+		NEXT4MNT=$( mount -t $FSTYPE | grep -v noload | ( read a b c d ; echo $c ) )
+	fi
+fi
+
+if [ ! -z $1 ] && [ $1 != help ] && [ $1_$2 != $1_help ] && [ $1 != config ] && \
+	[ $1 != version ] && [ $1 != debug ] && [ $1 != delay ] && [ _$1 != _test ] && [ $1 != tests ] ; then
+	if [ $1 != mkfs ] && [ $1 != fsck ] && [ $1 != on ] && [ $1 != off ] ; then
+	if [ -z $NEXT4MNT ] ; then
+		echo "$0: ambigous or missing next4 mount point"
+		echo "run '$0 config' to set default value"
+		exit 1
+	fi
+	if [ ! -d $NEXT4MNT ] ; then
+		echo "$0: bad next4 mount point $NEXT4MNT"
+		exit 1
+	fi
+	else
+	if [ -z $NEXT4DEV ] ; then
+		echo "$0: ambigous or missing next4 block device"
+		echo "run '$0 config' to set default value"
+		exit 1
+	fi
+	if [ ! -b $NEXT4DEV ] && [ ! -f $NEXT4DEV ] ; then
+		echo "$0: bad next4 block device $NEXT4DEV"
+		exit 1
+	fi
+	fi
+	export NEXT4MNT
+	export NEXT4DEV
+	S=$NEXT4MNT@$s
+fi
+
+if [ -z $SNAPDIR ] ; then
+	# directory inside next4 filesystem to store snapshot files
+	SNAPDIR=$NEXT4MNT/.snapshots
+fi
+if [ -z $SNAPMNT ] ; then
+	# directory prefix for snapshot mount points
+	# snaphot mount points will be created as $SNAPMNT<snapshot-name>
+	# default to ZFS snapshot naming convention <filesystem>@<snapshot>
+	SNAPMNT=$NEXT4MNT@
+fi
+TESTDIR=test
+
+# See how we were called.
+case "$1" in
+# Snapshot global commands
+  help)
+	if [ -z $2 ] ; then
+		$0
+	else
+		$0 $2 help
+	fi
+	;;
+  version)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: display next4 snapshot version."
+		exit 0
+	fi
+	ver=$(cat $SNAPDEBUGDIR/snapshot-version)
+	echo snapshot-version = $ver
+	;;
+  debug)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: set snapshot debug level."
+		echo "debug levels: 0=none, 1=error, 2=warning, 3=info, 4=debug."
+		echo "usage: $0 $1 [debug-level]"
+		exit 0
+	fi
+	if [ -e $SNAPDEBUGDIR/snapshot-debug ] ; then
+		echo $l > $SNAPDEBUGDIR/snapshot-debug
+		l=$(cat $SNAPDEBUGDIR/snapshot-debug)
+	fi
+	echo snapshot-debug = $l
+	;;
+  delay)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: set snapshot test delay."
+		echo "adds delay to specific snapshot operation."
+		echo "usage: $0 $1 <take|delete|cow|read|bitmap> [delay-sec] [delay-msec]"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		echo missing test name
+		$0 usage
+	fi
+	if [ ! -e $SNAPDEBUGDIR/test-$2-delay-msec ] ; then
+		echo invalid test name $2
+		$0 usage
+	fi
+	if [ ! -z $3 ] ; then
+		if [ $3 -gt 60 ] || [ $3 -lt 0 ] ; then
+			echo valid range for test delay is 0-60 sec
+		else
+			if [ ! -z $4 ] ; then
+				ms=$3$4
+			else
+				ms=${3}000
+			fi
+			echo $ms > $SNAPDEBUGDIR/test-$2-delay-msec
+		fi
+	fi
+	ms=$(cat $SNAPDEBUGDIR/test-$2-delay-msec)
+	echo test-$2-delay = $ms msec
+	;;
+
+# Next4 filesystem commands
+  config)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: configure or print default next filesystem parameters."
+		echo "creates configuration file $CONFFILE in current directory."
+		echo "usage: $0 config [next4-device next4-mount]"
+		exit 0
+	fi
+	if [ ! -z $2 ] && [ ! -b $2 ] && [ ! -f $2 ] ; then
+		echo "$0 config: bad block device: $2"
+		exit 1
+	fi
+	if [ ! -z $3 ] && [ ! -d $3 ] ; then
+		echo "$0 config: bad mount point: $3"
+		exit 1
+	fi
+	if [ ! -z $2 ] && [ ! -z $3 ] ; then
+		echo NEXT4DEV=$2 > $CONFFILE
+		echo NEXT4MNT=$3 >> $CONFFILE
+	fi
+	test -f $CONFFILE && cat $CONFFILE
+	;;
+  on)
+	if [ $1_$2 = $1_help ] ; then
+		echo "on: add the snapshot feature to an existing ext3 filesystem."
+		echo "after adding the snapshot feature to an ext3 filesystem, the filesystem"
+		echo "can no longer be mounted as ext3 read-write (only as next4 or ext3 read-only)."
+		echo "usage: $0 on [next4-device]"
+		exit 0
+	fi
+	$TUNEFS -e remount-ro -O has_snapshot $NEXT4DEV || exit 1
+	echo snapshot feature added to $NEXT4DEV
+	echo .
+	;;
+  off)
+	if [ $1_$2 = $1_help ] ; then
+		echo "off: remove the snapshot feature from a next4 filesystem."
+		echo "after removing the snapshot feature, all existing snapshots will be discarded"
+		echo "and the filesystem could be mounted as ext3 read-write again."
+		echo "usage: $0 off [next4-device]"
+		exit 0
+	fi
+	$TUNEFS -O ^has_snapshot $NEXT4DEV || exit 1
+	echo snapshot feature removed from $NEXT4DEV
+	echo .
+	;;
+  mkfs)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: create a next4 filesystem."
+		echo "usage: $0 mkfs [next4-device]"
+		exit 0
+	fi
+	$MKFS -b 4096 -j -J big -O has_snapshot,exclude_inode $NEXT4DEV || exit 1
+	$TUNEFS -e remount-ro $NEXT4DEV
+	echo next4 filesystem created on $NEXT4DEV
+	echo .
+	;;
+
+  stat)
+	if [ $1_$2 = $1_help ] ; then
+		echo "stat: display status of next4 filesystem and all its snapshots."
+		echo "snapshot attributes are displayed in short format. to display"
+		echo "attributes in long format use the '$0 lsattr' command."
+		echo "usage: $0 stat [next-mount]"
+		exit 0
+	fi
+	echo "Mounted next4 filesystem and snapshots:"
+	df -h $NEXT4MNT $SNAPMNT* 2> /dev/null
+	echo .
+	echo "Snapshots list:"
+	echo "id inode attributes disk-usage mtime filename"
+	echo "---------------------------------------------"
+	for s in $( ls -vr $SNAPDIR/* ) ; do
+		( echo "$( $LSSNAP -v $s ) " ; \
+			echo "$( du -h $s ) " ; \
+			echo "$( ls -lih --color=never $s ) " ) | \
+		( read id attr a ; read du b ; read ino c d e f g mm dd tt fname h ; \
+			echo $id $ino $attr $du $mm $dd $tt $fname )
+	done 2> /dev/null
+	echo .
+	;;
+  lsattr)
+	if [ $1_$2 = $1_help ] ; then
+		echo "$1: display attributes of next4 snapshots in long format."
+		echo "usage: $0 $1"
+		exit 0
+	fi
+	$LSSNAP -l $SNAPDIR
+	;;
+
+# Snapshot control commands (single snapshot)
+  take)
+	if [ $1_$2 = $1_help ] ; then
+		echo "take: take a snapshot."
+		echo "usage: $0 take [[next-mount@]snapshot-name] (default=next4-mount@GMT-date)"
+		exit 0
+	fi
+	mkdir -p $SNAPDIR || exit 1
+	$CHATTR +dx $SNAPDIR || exit 1
+	if [ -z $s ] ; then
+		# default snapshot-name is the <date-time> in shadow copy format
+		s=$( date -u +GMT-%Y.%m.%d-%H.%M.%S )
+		S=$NEXT4MNT@$s
+	fi
+	if [ -f $SNAPDIR/$s ] ; then
+		echo "$0 take: snapshot $S already exists!"
+		exit 1
+	fi
+	touch $SNAPDIR/$s 2> /dev/null
+	sync
+	$CHSNAP +S $SNAPDIR/$s || exit 1
+	echo snapshot $S was created
+	echo .
+	;;
+  delete)
+	if [ $1_$2 = $1_help ] ; then
+		echo "delete: umount a snapshot and mark it for deletion."
+		echo "any non-mounted snapshot can be marked for deletion"
+		echo "but some snapshot deletion is deferred to later time."
+		echo "usage: $0 delete [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $s ] ; then
+		$0
+		exit 1
+	fi
+	if [ -f $SNAPDIR/$s ] ; then
+		$0 umount $s
+		$CHSNAP -S $SNAPDIR/$s || exit 1
+	fi
+	echo snapshot $S is deleted
+	echo .
+	;;
+  remove)
+	if [ $1_$2 = $1_help ] ; then
+		echo "remove: delete a snapshot permanently."
+		echo "this command will fail for active snapshot and snapshots"
+		echo "in use by older snapshots. try using the delete command."
+		echo "usage: $0 remove [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		$0
+		exit 1
+	fi
+	if [ -f $SNAPDIR/$s ] ; then
+		$0 delete $s
+		rm -f $SNAPDIR/$s 2> /dev/null || exit 1
+	fi
+	echo snapshot $S was removed
+	echo .
+	;;
+  enable)
+	if [ $1_$2 = $1_help ] ; then
+		echo "enable: enable access to snapshot file."
+		echo "usage: $0 enable [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		echo "$0 enable: snapshot name is expected!"
+		exit 1
+	fi
+  	if [ ! -f $SNAPDIR/$s ] ; then
+		echo "$0 enable: snapshot $S not found!"
+		exit 1
+  	fi
+	$CHSNAP +n $SNAPDIR/$s || exit 1
+	;;
+  disable)
+	if [ $1_$2 = $1_help ] ; then
+		echo "disable: disable access to snapshot file."
+		echo "usage: $0 disable [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		echo "$0 disable: snapshot name is expected!"
+		exit 1
+	fi
+  	if [ ! -f $SNAPDIR/$s ] ; then
+		echo "$0 disable: snapshot $S not found!"
+		exit 1
+  	fi
+	if grep $SNAPMNT$s /proc/mounts ; then
+		echo "$0 disable: snapshot $S is mounted!"
+		exit 1
+	fi
+	$CHSNAP -n $SNAPDIR/$s || exit 1
+	;;
+
+# Snapshot control commands (single or all snapshots)
+  mount)
+	if [ $1_$2 = $1_help ] ; then
+		echo "mount: mount a snapshot."
+		echo "usage: $0 mount [next4-device next4-mount]"
+		echo "usage: $0 mount [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $s ] ; then
+		# mount next4 filesystem 
+		MNTOPT="-o errors=remount-ro"
+		# uncomment to enable delayed allocation 
+		#MNTOPT="$MNTOPT,nodelalloc"
+		if [ ! -z $NEXT4DEV ] && [ -f $NEXT4DEV ] ; then
+			MNTOPT="$MNTOPT,loop"
+		fi
+		# we may be called from mount.next4 so add -i
+		mount -t $FSTYPE -i $MNTOPT $NEXT4DEV $NEXT4MNT || exit 1
+		echo next4 filesystem is mounted on $NEXT4MNT
+	else
+  		$0 enable $s || exit 1
+		if grep $SNAPMNT$s /proc/mounts ; then
+			echo "$0 mount: snapshot $S is already mounted!"
+			exit 1
+		fi
+		mkdir -p $SNAPMNT$s
+  		mount -t ext4 -r -o loop,noload $SNAPDIR/$s $SNAPMNT$s || exit 1
+		echo snapshot $S is mounted
+  	fi
+	echo .
+	;;
+  umount)
+	if [ $1_$2 = $1_help ] ; then
+		echo "umount: umount a snapshot."
+		echo "usage: $0 umount [next4-mount]"
+		echo "usage: $0 umount [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $s ] ; then
+		# umount all snapshots
+		for s in $( ls $SNAPDIR/ 2> /dev/null ) ; do
+			$0 umount $s 2> /dev/null
+		done
+		# umount next4 filesystem 
+		# we may be called from umount.next4 so add -i
+		umount -i -d $MNTOPT $NEXT4MNT || exit 1
+		echo next4 filesystem was unmounted
+	else
+		if [ -d $SNAPMNT$s ] ; then
+			umount -d $SNAPMNT$s || exit 1
+			rmdir $SNAPMNT$s
+		fi
+  		$0 disable $s
+		echo snapshot $S was unmounted
+	fi
+	echo .
+	;;
+
+# Snapshot sanity tests
+  dump)
+	if [ $1_$2 = $1_help ] ; then
+		echo "dump: print a map of a snapshot file to kernel ring buffer."
+		echo "usage: $0 dump [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		echo "$0 dump: snapshot name is expected!"
+		exit 1
+	fi
+	if [ ! -f $SNAPDIR/$s ] ; then
+		echo "$0 dump: snapshot $S not found!"
+		exit 1
+	fi
+	$CHATTR -d $SNAPDIR/$s
+	echo "map of snapshot $S was printed to kernel ring buffer."
+	echo "use dmesg to display kernel ring buffer."
+	echo .
+	;;
+  fsck)
+	if [ $1_$2 = $1_help ] ; then
+		echo "fsck: run fsck on a snapshot or next4 filesystem."
+		echo "usage: $0 fsck [next-device]"
+		echo "usage: $0 fsck [next-mount@]<snapshot-name>"
+		exit 0
+	fi
+	if [ -z $s ] ; then
+		echo "Fscking next4 filesystem on $NEXT4DEV..."
+		$FSCK -pf -C 0 $NEXT4DEV >&2 && \
+			echo next4 filesystem on $NEXT4DEV 'is healthy' || \
+			echo next4 filesystem on $NEXT4DEV 'has errors'
+	else
+  		$0 enable $s || exit 1
+		echo "Fscking snapshot $S..."
+		$FSCK -nf -C 0 $SNAPDIR/$s >&2 && \
+			echo snapshot $S 'is healthy' || \
+			echo snaphsot $S 'has errors'
+		if ! grep $SNAPMNT$s /proc/mounts ; then
+  			$0 disable $s || exit 1
+		fi
+	fi
+	echo .
+	;;
+
+  mktest)
+	if [ -d $NEXT4MNT/A ] ; then
+		exit 0
+	fi
+	mkdir $NEXT4MNT/A
+	mkdir $NEXT4MNT/B
+	mkdir $NEXT4MNT/C
+	mkdir $NEXT4MNT/D
+	mkdir $NEXT4MNT/E
+	echo aligator > $NEXT4MNT/A/a.txt
+	echo bizon > $NEXT4MNT/B/b.txt
+	echo camel > $NEXT4MNT/C/c.txt
+	# create non-snapshot dir in snapshots dir block group
+	mkdir -p $NEXT4MNT/$TESTDIR
+	$CHATTR -x $NEXT4MNT/$TESTDIR || exit 1
+	;;
+  rmtest)
+	rm -rf $NEXT4MNT/? 2> /dev/null
+	rm -rf $NEXT4MNT/$TESTDIR 2> /dev/null
+	;;
+  lstest)
+	if [ $1_$2 = $1_help ] ; then
+		echo "lstest: list the content of test files in a snapshot or next4 filesystem."
+		echo "usage: $0 lstest [[next-mount@]snapshot-name] (default=next4-mount)"
+		exit 0
+	fi
+	if [ -z $s ] ; then
+		echo Files in file system:
+		d=$NEXT4MNT
+	else
+		$0 mount $s || exit 1
+		echo Files in snapshot $s:
+		d=$SNAPMNT$s
+	fi
+	if [ -d $d ] ; then
+		cd $d > /dev/null
+		grep -v xxx ?/*
+		test -e $TESTDIR/md5list && (cd $TESTDIR ; md5sum -c md5list || exit 1)
+		#find $d/ -maxdepth 1 -type f -print
+		cd - > /dev/null
+		echo .
+	fi
+	if [ ! -z $s ] ; then
+		$0 umount $s || exit 1
+	fi
+	;;
+  tests)
+	if [ $1_$2 = $1_help ] ; then
+		echo "tests: run snapshot sanity tests 1..N."
+		echo "usage: $0 tests [test-number] [delay-sec] [file-size-mb]"
+		echo "delay-sec: sleep between tests"
+		echo "file-size-mb: test file size in mega bytes (default = 1)"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		N=4
+	else
+		N=$2
+	fi
+	# disable read-ahead if test read is enabled
+	test $test_read = 0 || blockdev --setra 0 $NEXT4DEV
+	for s in $( ls $SNAPDIR/ 2> /dev/null ) ; do
+		$0 delete $s 2> /dev/null
+	done
+	for s in $( ls $SNAPDIR/ 2> /dev/null ) ; do
+		$0 remove $s 2> /dev/null
+	done
+	for n in $( seq 0 $N ) ; do
+		$0 test $n $3 $4 || exit 1
+	done
+	$0 lstest
+	for n in $( seq 1 $N ) ; do
+		$0 lstest $n
+	done
+	# skip fsck if non zero read delay or zero delay between tests         
+        ( [ ${test_read}_ms = 0_ms ] && [ ${3}_ms != 0_ms ] ) || exit 0
+	sleep 1
+	if [ $N = 0 ] ; then
+		$0 umount $NEXT4MNT || exit 1
+		$0 fsck $NEXT4DEV
+		$0 mount $NEXT4DEV $NEXT4MNT || exit 1
+	else
+		for n in $( seq 1 $N ) ; do
+			$0 fsck $n 2> /dev/null
+		done
+	fi
+	;;
+  test)
+	if [ $1_$2 = $1_help ] ; then
+		echo "test: run snapshot sanity test N."
+		echo "usage: $0 test [test-number] [delay-sec] [file-size-mb]"
+		echo "delay-sec: sleep before test"
+		echo "file-size-mb: test file size in mega bytes (default = 1)"
+		exit 0
+	fi
+	if [ -z $2 ] ; then
+		n=1
+	else
+		n=$2
+	fi
+	if [ $n = 0 ] ; then
+		$0 rmtest
+		exit 0
+	fi
+	$0 mktest
+	echo
+	echo Running snapshot test $n:
+	echo ------------------------
+	if [ ! -z $3 ] ; then
+		sleep $3 # delay between tests
+	fi
+	if [ ! -z $4 ] ; then
+		M=$4
+	else
+		M=1
+	fi
+	F=${M}M
+	cd $NEXT4MNT/$TESTDIR > /dev/null
+	NOTRUNC="conv=notrunc"
+	# uncomment the following line to run in-place write tests
+	INPLACE=$NOTRUNC
+	# uncomment the following line to run direct I/O write tests
+	DIRECT="oflag=direct"
+	TRUNCSIZE=4
+	echo Appending $F zeros to $F.1 $DIRECT
+	# append writes to new allocated blocks
+	dd if=/dev/zero bs=1M count=$M of=$F.1 $NOTRUNC oflag=append $DIRECT status=noxfer || exit 1
+	echo Writing $F random data to $n files
+	for i in $( seq 1 $n ) ; do
+		# 1st rewrite moves existing blocks to snapshot and allocates new blocks
+		fallocate -mrs -l 1M $F.$i 2>/dev/null || \
+			dd if=/dev/urandom bs=1M count=$M of=$F.$i $INPLACE status=noxfer || exit 1
+		# subsequent rewrites doesn't move blocks to snapshot
+		fallocate -mrs -l 1M $F.1 2>/dev/null || \
+			dd if=/dev/urandom bs=1M count=$M of=$F.1 $INPLACE $DIRECT status=noxfer || exit 1
+	done
+	for i in $( seq 1 $n ) ; do
+		md5sum $F.$i || exit 1
+	done > md5list
+	cd - > /dev/null
+	$0 lstest || exit 1
+	s=$n
+	$0 take $s || exit 1
+	case "$n" in
+  	  1)
+		echo Create test:
+		echo ------------
+		echo 'Creating d.txt'
+		echo dodo > $NEXT4MNT/D/d.txt
+		echo 'Creating e.txt'
+		echo emu > $NEXT4MNT/E/e.txt
+	  ;;
+	  2)
+		echo Write test:
+		echo -----------
+		echo 'Writing b.txt (append)'
+		echo 'barracuda' >> $NEXT4MNT/B/b.txt
+		echo 'Writing c.txt (truncate)'
+		echo 'crocodile' > $NEXT4MNT/C/c.txt
+	  ;;
+	  3)
+		echo Remove test:
+		echo ------------
+		echo "Truncating c.txt (to size $TRUNCSIZE)"
+		truncate -s $TRUNCSIZE $NEXT4MNT/C/c.txt
+		echo 'Removing d.txt'
+		rm $NEXT4MNT/D/d.txt
+	  ;;
+	  4)
+		echo Restore test:
+		echo -------------
+		f=$( ls -v $SNAPDIR/ | head -n 1 )
+		echo 'Restoring from snapshot' $f
+		if ! grep $SNAPMNT$f /proc/mounts ; then
+			$0 mount $f || exit 1
+		fi
+		rm -rf $NEXT4MNT/?
+		cp -R $SNAPMNT$f/? $NEXT4MNT/
+		$0 umount $f || exit 1
+	  ;;
+	  5)
+		echo Delete excluded test:
+		echo ---------------------
+	  	#echo Removing excluded files
+	  	#rm $NEXT4MNT/*M
+	  ;;
+	  6)
+		echo Delete reallocated test:
+		echo ------------------------
+		#echo Removing /$F
+		#rm $NEXT4MNT/$F
+	  ;;
+	  7)
+		echo Shrink snapshots test:
+		echo ---------------------
+		for f in 5 6 4 3 2 ; do
+			echo 'Deleting snapshot' $f
+			$0 delete $f 2> /dev/null
+			$0 stat
+		done
+	  ;;
+	  8)
+		echo Merge snapshots test:
+		echo ---------------------
+		$0 umount 1
+		for f in 7 1 8 ; do
+			echo 'Deleting snapshot' $f
+			$0 delete $f 2> /dev/null
+			$0 stat
+		done
+	  ;;
+	esac || exit 1
+	echo .
+	$0 lstest || exit 1
+	$0 lstest $s || exit 1
+	$0 stat
+	;;
+  *)
+	echo "$SCRIPT_NAME v$SCRIPT_VER ($SCRIPT_DESC)"
+	echo "usage: $0 help [cmd]"
+	echo "usage: $0 version"
+	echo
+	echo "Next4 filesystem maintenance commands:"
+	echo "usage: $0 {config|mount} [next4-device next4-mount]"
+	echo "usage: $0 {mkfs|fsck|on|off} [next4-device]"
+	echo "usage: $0 {stat|umount} [next4-mount]"
+	echo
+	echo "Next4 snapshot commands:"
+	echo "usage: $0 take [[next-mount@]snapshot-name] (default=next-mount@GMT-date)"
+	echo "usage: $0 {mount|umount|delete|remove|fsck|dump} [next-mount@]<snapshot-name>"
+	echo
+	echo "<snapshot-name> parameter may be just the name of the snapshot or may be"
+	echo "given in ZFS style of <next4-mount>@<snapshot-name>."
+	echo "in the former case, the next4 mount point is either read from /proc/mounts"
+	echo "(if only one next4 filesystem is mounted) or from $CONFFILE config file."
+	echo "in the latter case, the next4 mount point is parsed from the snapshot name prefix."
+	echo
+	echo "Next4 debug and test commands:"
+	echo "usage: $0 debug [debug-level]"
+	echo "usage: $0 delay <take|delete|cow|read|bitmap> [delay-sec] [delay-msec]"
+	echo "usage: $0 {test|tests} [test-number] [delay-sec] [file-size-mb]"
+	echo
+	exit 1
+esac
+
+exit 0
