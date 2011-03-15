@@ -841,12 +841,14 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
 		/* journal message buffer at journal super block + 1K */
 		char *buf = ((char *) journal->j_superblock) +
 			SUPERBLOCK_OFFSET;
-		int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
+		int n, len = ctx->fs->blocksize - MSGBUF_OFFSET;
 
-		if (len >= 2*SUPERBLOCK_OFFSET && *buf) {
+		if (len >= MSGBUF_OFFSET && *buf) {
+			/* keep it simple - write in MSGBUF_OFFSET blocksize */
+			io_channel_set_blksize(ctx->fs->io, MSGBUF_OFFSET);
+			n = len / MSGBUF_OFFSET;
 			/* write journal message buffer to super block + 2K */
-			io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
-			retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
+			retval = io_channel_write_blk(ctx->fs->io, 1, n, buf);
 			io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
 			/* clear journal message buffer */
 			memset(buf, 0, len);

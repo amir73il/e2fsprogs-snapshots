@@ -713,27 +713,29 @@ static void e2fsck_fix_dirhash_hint(e2fsck_t ctx)
 static void e2fsck_print_message_buffer(e2fsck_t ctx)
 {
 	char *buf;
-	int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
+	int n, len = ctx->fs->blocksize - MSGBUF_OFFSET;
 	unsigned offset = 0;
 	int retval;
-#define MSGLEN 256
 
-	if (len < 2*SUPERBLOCK_OFFSET)
+	if (len < MSGBUF_OFFSET)
+		/* 1K or 2K fs->blocksize */
 		return;
 
 	buf = (char *) e2fsck_allocate_memory(ctx, len, "message buffer");
 
-	io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
+	/* keep it simple - write in MSGBUF_OFFSET blocksize */
+	io_channel_set_blksize(ctx->fs->io, MSGBUF_OFFSET);
+	n = len / MSGBUF_OFFSET;
 	/* read message buffer from super block + 2K */
-	retval = io_channel_read_blk(ctx->fs->io, 2, 2, buf);
+	retval = io_channel_read_blk(ctx->fs->io, 1, n, buf);
 	if (retval || !*buf)
 		goto out;
 
 	/* print messages in buffer */
 	puts("Error messages recorded in message buffer:");
 	while (offset < len && buf[offset]) {
-		fputs(buf+offset, stdout);
-		offset += MSGLEN;
+		puts(buf+offset);
+		offset += MSGBUF_RECLEN;
 	}
 	puts("End of message buffer.");
 out:
@@ -748,17 +750,23 @@ out:
 void e2fsck_clear_message_buffer(e2fsck_t ctx)
 {
 	char *buf;
-	int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
+	int n, len = ctx->fs->blocksize - MSGBUF_OFFSET;
+	unsigned offset = 0;
+	int retval;
 
-	if (len < 2*SUPERBLOCK_OFFSET)
+	if (len < MSGBUF_OFFSET)
+		/* 1K or 2K fs->blocksize */
 		return;
 
 	buf = (char *) e2fsck_allocate_memory(ctx, len, "message buffer");
 
-	io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
+	/* keep it simple - write in MSGBUF_OFFSET blocksize */
+	io_channel_set_blksize(ctx->fs->io, MSGBUF_OFFSET);
+	n = len / MSGBUF_OFFSET;
+
 	/* clear message buffer at super block + 2K */
 	memset(buf, 0, len);
-	io_channel_write_blk(ctx->fs->io, 2, 2, buf);
+	io_channel_write_blk(ctx->fs->io, 1, n, buf);
 	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
 	ext2fs_free_mem(&buf);
 }
