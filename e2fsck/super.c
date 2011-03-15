@@ -628,11 +628,13 @@ void check_snapshots(e2fsck_t ctx)
 		/* corrupted snapshot need to be fixed */
 		clear_problem_context(&pctx);
 		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
-			if ((sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) ||
-				(sb->s_snapshot_list || sb->s_snapshot_inum)) {
+			if (sb->s_snapshot_list || sb->s_snapshot_inum ||
+				(sb->s_flags & (EXT2_FLAGS_FIX_SNAPSHOT |
+						EXT2_FLAGS_IS_SNAPSHOT))) {
 				/* reset snapshot list head */
 				sb->s_snapshot_list = sb->s_snapshot_inum = 0;
-				sb->s_flags &= ~EXT2_FLAGS_FIX_SNAPSHOT;
+				sb->s_flags &= ~(EXT2_FLAGS_FIX_SNAPSHOT |
+						 EXT2_FLAGS_IS_SNAPSHOT);
 				ext2fs_mark_super_dirty(ctx->fs);
 			}
 			/* don't ask again after pass1 */
@@ -733,11 +735,30 @@ static void e2fsck_print_message_buffer(e2fsck_t ctx)
 		fputs(buf+offset, stdout);
 		offset += MSGLEN;
 	}
-	/* clear message buffer */
-	memset(buf, 0, len);
-	retval = io_channel_write_blk(ctx->fs->io, 2, 2, buf);
 	puts("End of message buffer.");
 out:
+	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
+	ext2fs_free_mem(&buf);
+}
+
+/*
+ * This function clears the message buffer at the end of super block.
+ * It is called before clearing the EXT2_ERROR_FS flag from super block.
+ */
+void e2fsck_clear_message_buffer(e2fsck_t ctx)
+{
+	char *buf;
+	int len = ctx->fs->blocksize - 2*SUPERBLOCK_OFFSET;
+
+	if (len < 2*SUPERBLOCK_OFFSET)
+		return;
+
+	buf = (char *) e2fsck_allocate_memory(ctx, len, "message buffer");
+
+	io_channel_set_blksize(ctx->fs->io, SUPERBLOCK_OFFSET);
+	/* clear message buffer at super block + 2K */
+	memset(buf, 0, len);
+	io_channel_write_blk(ctx->fs->io, 2, 2, buf);
 	io_channel_set_blksize(ctx->fs->io, ctx->fs->blocksize);
 	ext2fs_free_mem(&buf);
 }
