@@ -493,6 +493,9 @@ void check_exclude_inode(e2fsck_t ctx);
 #ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 void check_snapshots(e2fsck_t ctx);
 #endif
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+void e2fsck_clear_message_buffer(e2fsck_t ctx);
+#endif
 
 /* util.c */
 extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned int size,

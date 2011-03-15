@@ -1436,6 +1436,9 @@ no_journal:
 				sb->s_state &= ~EXT2_VALID_FS;
 			sb->s_mnt_count = 0;
 			sb->s_lastcheck = ctx->now;
+#ifdef EXT2FS_SNAPSHOT_MESSAGE_BUFFER
+			e2fsck_clear_message_buffer(ctx);
+#endif
 			ext2fs_mark_super_dirty(fs);
 		}
 	}
