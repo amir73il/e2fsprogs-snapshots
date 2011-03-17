@@ -438,7 +438,7 @@ case "$1" in
 			exit 1
 		fi
 		mkdir -p $SNAPMNT$s
-  		mount -t ext4 -r -o loop,noload $SNAPDIR/$s $SNAPMNT$s || exit 1
+  		mount -t $FSTYPE -r -o loop,noload $SNAPDIR/$s $SNAPMNT$s || exit 1
 		echo snapshot $S is mounted
   	fi
 	echo .
