@@ -76,13 +76,6 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
 	sb->s_snapshot_r_blocks_count =
 		ext2fs_swab64(sb->s_snapshot_r_blocks_count);
 	sb->s_snapshot_list = ext2fs_swab32(sb->s_snapshot_list);
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
-	sb->s_snapshot_inum_old = ext2fs_swab32(sb->s_snapshot_inum_old);
-	sb->s_snapshot_id_old = ext2fs_swab32(sb->s_snapshot_id_old);
-	sb->s_snapshot_r_blocks_old =
-		ext2fs_swab32(sb->s_snapshot_r_blocks_old);
-	sb->s_snapshot_list_old = ext2fs_swab32(sb->s_snapshot_list_old);
-#endif
 
 	for (i=0; i < 4; i++)
 		sb->s_hash_seed[i] = ext2fs_swab32(sb->s_hash_seed[i]);

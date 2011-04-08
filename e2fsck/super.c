@@ -449,26 +449,6 @@ void check_exclude_inode(e2fsck_t ctx)
 
 	clear_problem_context(&pctx);
 
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
-	/* Migrate from old to new Next3 on-disk format */
-	if (fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
-		/* Move exclude inode from old to new position */
-		retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
-		if (!retval) {
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO, &inode,
-					   "copy_old_exclude_ino");
-			memset(&inode, 0, sizeof(inode));
-			e2fsck_write_inode(ctx, EXT2_EXCLUDE_INO_OLD, &inode,
-					   "clear_old_exclude_ino");
-			/* Clear old exclude inode flag */
-			fs->super->s_feature_compat &=
-				~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
-			ext2fs_mark_super_dirty(fs);
-		}
-	}
-
-#endif
 	/* Read the exclude inode */
 	pctx.ino = EXT2_EXCLUDE_INO;
 	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);

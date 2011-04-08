@@ -70,7 +70,7 @@ static int generation_opt;
 
 static void usage(void)
 {
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 	fprintf(stderr, _("Usage: %s [-XRVadlv] [files...]\n"), program_name);
 #else
 	fprintf(stderr, _("Usage: %s [-RVadlv] [files...]\n"), program_name);
@@ -189,14 +189,14 @@ int main (int argc, char ** argv)
 		pf_options |= PFOPT_SNAPSHOT;
 
 #endif
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 	while ((c = getopt (argc, argv, "XRVadlv")) != EOF)
 #else
 	while ((c = getopt (argc, argv, "RVadlv")) != EOF)
 #endif
 		switch (c)
 		{
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 			case 'X':
 				/* for backward compatibility with next3 */
 				pf_options &= ~PFOPT_SNAPSHOT;

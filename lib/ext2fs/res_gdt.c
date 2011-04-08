@@ -254,30 +254,6 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 	indir_buf = (__u32 *)((char *)dindir_buf + 1*fs->blocksize);
 	data_buf = (__u32 *)((char *)dindir_buf + 2*fs->blocksize);
 
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
-	/* Migrate from old to new Next3 on-disk format */
-	if (fs->super->s_feature_compat &
-	      NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD) {
-		/* Move exclude inode from old to new position */
-		retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO_OLD, &inode);
-		if (!retval) {
-			retval = ext2fs_write_inode(fs, EXT2_EXCLUDE_INO,
-					&inode);
-			if (retval)
-				goto out_free;
-			memset(&inode, 0, sizeof(inode));
-			retval = ext2fs_write_inode(fs, EXT2_EXCLUDE_INO_OLD,
-					&inode);
-			if (retval)
-				goto out_free;
-			/* Clear old exclude inode flag */
-			fs->super->s_feature_compat &=
-				~NEXT3_FEATURE_COMPAT_EXCLUDE_INODE_OLD;
-			ext2fs_mark_super_dirty(fs);
-		}
-	}
-
-#endif
 	retval = ext2fs_read_inode(fs, EXT2_EXCLUDE_INO, &inode);
 	if (retval)
 		goto out_free;
@@ -405,14 +381,6 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 			}
 		}
 		fs->exclude_blks[grp] = data_blk;
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
-		/* reset old exclude/cow bitmap cache to zero */
-		if (gd->bg_exclude_bitmap_old || gd->bg_cow_bitmap_old) {
-			gd->bg_exclude_bitmap_old = 0;
-			gd->bg_cow_bitmap_old = 0;
-			gdt_dirty = 1;
-		}
-#endif
 #ifdef EXCLUDE_INO_PROGRESS
 		printf("\b\b\b\b\b\b\b\b\b\b\b%5d/%5d", grp,
 				fs->group_desc_count);

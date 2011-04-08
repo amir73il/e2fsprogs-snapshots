@@ -25,12 +25,12 @@ config SNAPSHOT_EXCLUDE_INODE
 	  Fsck checks that all exclude inode blocks are allocated.
 
 config SNAPSHOT_CTL
-	bool "Next3 snapshot control with chattr/lsattr -X"
+	bool "Snapshot control with chsnap/lssnap"
 	help
 	  Set/clear snapshots parent directory with chattr +/-x.
-	  Take/delete snapshot with chattr -X +/-S.
-	  Enable/disable snapshot with chattr -X +/-n.
-	  View snapshot status with lsattr -X.
+	  Take/delete snapshot with chsnap +/-S.
+	  Enable/disable snapshot with chsnap +/-n.
+	  View snapshot status with lssnap.
 
 config SNAPSHOT_HAS_SNAPSHOT
 	bool "Avoid offline modifications to a file system with snapshots"
@@ -87,13 +87,10 @@ config SNAPSHOT_MESSAGE_BUFFER
 	  Next3 supports only block size of 4K, so there is always 2K of free
 	  space for the message buffer after the 1K super block.
 
-config SNAPSHOT_ON_DISK_MIGRATE
-	bool "Migrate old to new on-disk format"
+config SNAPSHOT_CTL_OLD
+	bool "Old next3 snapshot control with chattr/lsattr -X"
 	help
-	  Detect old 'has_snapshot' feature on ext2fs_open(), migrate snapshot
-	  fields and flags and set new 'has_snapshot' feature.
-	  Detect old 'exclude_inode' feature on create/check_exclude_inode(),
-	  copy old exclude inode to new exclude inode location and set the new
-	  'exclude_inode' feature.
-
+	  Take/delete snapshot with chattr -X +/-S.
+	  Enable/disable snapshot with chattr -X +/-n.
+	  View snapshot status with lsattr -X.
 

@@ -68,7 +68,7 @@ static struct flags_name snapshot_flags_array[] = {
 	{ 0, NULL, NULL }
 };
 
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 /* Old snapshot flags for backward compatibility with next3 */
 static struct flags_name snapshot_X_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, "S", "on_liSt" },

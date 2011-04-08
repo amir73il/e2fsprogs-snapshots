@@ -88,7 +88,7 @@ static void usage(void)
 #ifdef EXT2FS_SNAPSHOT_CTL
 	if (chsnap) {
 		fprintf(stderr,
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 			_("Usage: %s [-X] [-+=Sn] snapshot files...\n"),
 #else
 			_("Usage: %s [-+=Sn] snapshot files...\n"),
@@ -142,7 +142,7 @@ static struct flags_char snapshot_flags_array[] = {
 	{ 0, 0 }
 };
 
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 /* Old snapshot flags for backward compatibility with next3 */
 static struct flags_char snapshot_X_flags_array[] = {
 	{ NEXT3_SNAPFILE_LIST_FL, 'S' },
@@ -174,7 +174,7 @@ static int decode_arg (int * i, int argc, char ** argv)
 	{
 	case '-':
 		for (p = &argv[*i][1]; *p; p++) {
-#ifdef EXT2FS_SNAPSHOT_ON_DISK_MIGRATE
+#ifdef EXT2FS_SNAPSHOT_CTL_OLD
 			if (*p == 'X') {
 				flags_array = snapshot_X_flags_array;
 				continue;
