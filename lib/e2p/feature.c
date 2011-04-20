@@ -40,9 +40,13 @@ static struct feature feature_list[] = {
 			"resize_inode" },
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_LAZY_BG,
 			"lazy_bg" },
-#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE,
 			"exclude_inode" },
+#endif
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+	{	E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP,
+			"exclude_bitmap" },
 #endif
 
 	{	E2P_FEATURE_RO_INCOMPAT, EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER,
@@ -59,7 +63,9 @@ static struct feature feature_list[] = {
 			"dir_nlink" },
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE,
 			"extra_isize" },
-#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
+	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
+			"snapshots" },
 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT,
 			"has_snapshot" },
 #endif

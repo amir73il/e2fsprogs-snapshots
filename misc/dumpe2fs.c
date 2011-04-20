@@ -216,20 +216,22 @@ static void list_desc (ext2_filsys fs)
 		print_bg_rel_offset(fs, fs->group_desc[i].bg_block_bitmap, 0,
 				    first_block, last_block);
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
+		if (fs->super->s_feature_compat &
+				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP) {
+			fputs(_(", Exclude bitmap at "), stdout);
+			print_number(fs->group_desc[i].bg_exclude_bitmap);
+			print_bg_rel_offset(fs,
+					fs->group_desc[i].bg_exclude_bitmap, 0,
+					first_block, last_block);
+		}
+
+#endif
 		fputs(_(", Inode bitmap at "), stdout);
 		print_number(fs->group_desc[i].bg_inode_bitmap);
 		print_bg_rel_offset(fs, fs->group_desc[i].bg_inode_bitmap, 0,
 				    first_block, last_block);
 
-#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
-		if (fs->exclude_blks && fs->exclude_blks[i]) {
-			fputs(_(", Exclude bitmap at "), stdout);
-			print_number(fs->exclude_blks[i]);
-			print_bg_rel_offset(fs, fs->exclude_blks[i], 0,
-					first_block, last_block);
-		}
-
-#endif
 		fputs(_("\n  Inode table at "), stdout);
 		print_range(fs->group_desc[i].bg_inode_table,
 			    fs->group_desc[i].bg_inode_table +

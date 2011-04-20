@@ -381,7 +381,7 @@ static void check_exclude_bitmaps(e2fsck_t ctx)
 	clear_problem_context(&pctx);
 
 	if (!(fs->super->s_feature_compat &
-				EXT2_FEATURE_COMPAT_EXCLUDE_INODE))
+				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP))
 		return;
 
 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,

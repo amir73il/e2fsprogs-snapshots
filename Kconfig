@@ -16,22 +16,6 @@ config SNAPSHOT_BIG_JOURNAL
 	  '-J big' option is used to create a journal, increase the default
 	  journal size by a factor of 24.
 
-config SNAPSHOT_EXCLUDE_INODE
-	bool "Create/check the special exclude inode"
-	help
-	  The exclude inode owns all the exclude bitmap blocks.
-	  It is pre-allocated by 'mke2fs/tune2fs -O exclude_inode'.
-	  It is extended by resize2fs when block groups are added.
-	  Fsck checks that all exclude inode blocks are allocated.
-
-config SNAPSHOT_CTL
-	bool "Snapshot control with chsnap/lssnap"
-	help
-	  Set/clear snapshots parent directory with chattr +/-x.
-	  Take/delete snapshot with chsnap +/-S.
-	  Enable/disable snapshot with chsnap +/-n.
-	  View snapshot status with lssnap.
-
 config SNAPSHOT_HAS_SNAPSHOT
 	bool "Avoid offline modifications to a file system with snapshots"
 	help
@@ -41,13 +25,6 @@ config SNAPSHOT_HAS_SNAPSHOT
 	  Fsck displays a warning about possible corruption of the snapshots
 	  in interactive mode and avoids freeing blocks in preen mode.
 
-config SNAPSHOT_CLEANUP
-	bool "Cleanup snapshot list when removing has_snapshot feature"
-	help
-	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
-	  Snapshot inodes are chained on a list starting at the super block.
-	  Delete all snapshot inodes on the list and reset exclude bitmap.
-
 config SNAPSHOT_EXCLUDE_BITMAP
 	bool "Create/check the exclude bitmap"
 	help
@@ -55,6 +32,14 @@ config SNAPSHOT_EXCLUDE_BITMAP
 	  the exclude bitmap. There is one exclude bitmap block per block group.
 	  Mke2fs allocates the exclude bitmap and it cannot be removed.
 	  Fsck checks that all (and only) snapshot file blocks are excluded.
+
+config SNAPSHOT_CTL
+	bool "Snapshot control with chsnap/lssnap"
+	help
+	  Set/clear snapshots parent directory with chattr +/-x.
+	  Take/delete snapshot with chsnap +/-S.
+	  Enable/disable snapshot with chsnap +/-n.
+	  View snapshot status with lssnap.
 
 config SNAPSHOT_CHECK_LIST
 	bool "Check snapshot list on fsck"
@@ -87,10 +72,24 @@ config SNAPSHOT_MESSAGE_BUFFER
 	  With a default block size of 4K, there is always 2K of free
 	  space for the message buffer after the 1K super block.
 
+config SNAPSHOT_CLEANUP
+	bool "Cleanup snapshot list when removing has_snapshot feature"
+	help
+	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
+	  Snapshot inodes are chained on a list starting at the super block.
+	  Delete all snapshot inodes on the list and reset exclude bitmap.
+
 config SNAPSHOT_CTL_OLD
 	bool "Old next3 snapshot control with chattr/lsattr -X"
 	help
 	  Take/delete snapshot with chattr -X +/-S.
 	  Enable/disable snapshot with chattr -X +/-n.
 	  View snapshot status with lsattr -X.
+
+config SNAPSHOT_EXCLUDE_INODE
+	bool "Migrate old exclude_inode feature to exclude_bitmap feature"
+	help
+	  Read exclude bitmap block locations from exclude inode, store them
+	  in the group descriptors, remove the exclude inode, clear the
+	  exclude_inode feature and set the exclude_bitmap feature.
 

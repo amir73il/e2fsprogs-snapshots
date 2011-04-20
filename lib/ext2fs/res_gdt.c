@@ -217,9 +217,9 @@ out_free:
 	return retval;
 }
 
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 #define ext2fs_group_desc(fs, gdp, grp) (gdp)+(grp)
 
-#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 /*
  * ext2fs_create_exclude_inode():
  * the exclude inode owns all the exclude bitmap blocks (one per block group)
@@ -258,16 +258,6 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 	if (retval)
 		goto out_free;
 
-	if (fs->exclude_blks)
-		ext2fs_free_mem(&fs->exclude_blks);
-	retval = ext2fs_get_array(fs->group_desc_count,
-			sizeof(fs->exclude_blks[0]),
-			&fs->exclude_blks);
-	if (retval)
-		goto out_free;
-	memset(fs->exclude_blks, 0, fs->group_desc_count *
-			sizeof(fs->exclude_blks[0]));
-
 #ifdef EXCLUDE_INO_PROGRESS
 	printf("Reserving exclude bitmap blocks:            ");
 #endif
@@ -300,7 +290,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 	}
 
 	/*
-	 * init exclude_blks array for all existing block groups
+	 * allocate exclude bitmaps for all existing block groups
 	 * and allocate indirect blocks for all reserved block groups
 	 */
 	max_groups = fs->desc_blocks + sb->s_reserved_gdt_blocks;
@@ -380,7 +370,10 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 				data_dirty = 0;
 			}
 		}
-		fs->exclude_blks[grp] = data_blk;
+		if (!gd->bg_exclude_bitmap) {
+			gd->bg_exclude_bitmap = data_blk;
+			gdt_dirty = 1;
+		}
 #ifdef EXCLUDE_INO_PROGRESS
 		printf("\b\b\b\b\b\b\b\b\b\b\b%5d/%5d", grp,
 				fs->group_desc_count);
@@ -423,6 +416,13 @@ out_inode:
 		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
 		ext2fs_mark_super_dirty(fs);
 	}
+        if (!(fs->super->s_feature_compat &
+				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP)) {
+		/* set exclude_bitmap along with exclude_inode */
+		fs->super->s_feature_compat |=
+				EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP;
+		ext2fs_mark_super_dirty(fs);
+	}
 #ifdef EXCLUDE_INO_DEBUG
 	printf("inode.i_blocks = %u, i_size = %u\n",
 			inode.i_blocks, inode.i_size);
@@ -433,4 +433,3 @@ out_free:
 }
 
 #endif
-

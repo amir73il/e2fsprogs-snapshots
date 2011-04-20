@@ -212,9 +212,6 @@ struct struct_ext2_filsys {
 	dgrp_t				group_desc_count;
 	unsigned long			desc_blocks;
 	struct opaque_ext2_group_desc *	group_desc;
-#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
-	__u32 *				exclude_blks;
-#endif
 	int				inode_blocks_per_group;
 	ext2fs_inode_bitmap		inode_map;
 	ext2fs_block_bitmap		block_map;
@@ -523,11 +520,12 @@ typedef struct ext2_icount *ext2_icount_t;
 /*
  * Features supported by this version of the library
  */
-#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 #define EXT2_LIB_FEATURE_COMPAT_SUPP	(EXT2_FEATURE_COMPAT_DIR_PREALLOC|\
 					 EXT2_FEATURE_COMPAT_IMAGIC_INODES|\
 					 EXT3_FEATURE_COMPAT_HAS_JOURNAL|\
 					 EXT2_FEATURE_COMPAT_EXCLUDE_INODE|\
+					 EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP|\
 					 EXT2_FEATURE_COMPAT_RESIZE_INODE|\
 					 EXT2_FEATURE_COMPAT_DIR_INDEX|\
 					 EXT2_FEATURE_COMPAT_EXT_ATTR)
@@ -563,7 +561,7 @@ typedef struct ext2_icount *ext2_icount_t;
 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
 					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
 #endif
-#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#ifdef EXT2FS_SNAPSHOT_HAS_SNAPSHOT
 #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE|\

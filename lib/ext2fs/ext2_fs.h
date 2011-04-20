@@ -29,15 +29,15 @@
 #define EXT2FS_SNAPSHOT_ON_DISK
 #define EXT2FS_SNAPSHOT_BIG_JOURNAL
 #define EXT2FS_SNAPSHOT_EXCLUDE_INODE
+#define EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 #define EXT2FS_SNAPSHOT_CTL
 #define EXT2FS_SNAPSHOT_HAS_SNAPSHOT
-#define EXT2FS_SNAPSHOT_CLEANUP
-#define EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
 #define EXT2FS_SNAPSHOT_CHECK_LIST
 #define EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 #define EXT2FS_SNAPSHOT_HUGE_SNAPSHOT
 #define EXT2FS_SNAPSHOT_MESSAGE_BUFFER
 #define EXT2FS_SNAPSHOT_CTL_OLD
+#define EXT2FS_SNAPSHOT_CLEANUP
 
 /*
  * Define EXT2_PREALLOCATE to preallocate data blocks for expanding files
@@ -157,7 +157,12 @@ struct ext2_group_desc
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
 	__u16	bg_flags;
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
+	__u32	bg_reserved[1];
+#else
 	__u32	bg_reserved[2];
+#endif
 	__u16	bg_itable_unused;	/* Unused inodes count */
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 };
@@ -174,7 +179,12 @@ struct ext4_group_desc
 	__u16	bg_free_inodes_count;	/* Free inodes count */
 	__u16	bg_used_dirs_count;	/* Directories count */
 	__u16	bg_flags;
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+	__u32	bg_exclude_bitmap;	/* Exclude bitmap block */
+	__u32	bg_reserved[1];
+#else
 	__u32	bg_reserved[2];
+#endif
 	__u16	bg_itable_unused;	/* Unused inodes count */
 	__u16	bg_checksum;		/* crc16(s_uuid+grouo_num+group_desc)*/
 	__u32	bg_block_bitmap_hi;	/* Blocks bitmap block MSB */
@@ -184,12 +194,20 @@ struct ext4_group_desc
 	__u16	bg_free_inodes_count_hi;/* Free inodes count MSB */
 	__u16	bg_used_dirs_count_hi;	/* Directories count MSB */
 	__u16   bg_pad;
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+	__u32	bg_exclude_bitmap_hi;	/* Exclude bitmap block MSB */
+	__u32	bg_reserved2[2];
+#else
 	__u32	bg_reserved2[3];
+#endif
 };
 
 #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
 #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
 #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#define EXT2_BG_EXCLUDE_UNINIT	0x0008 /* Exclude bitmap not initialized */
+#endif
 
 /*
  * Data structures used by the directory indexing feature
@@ -742,6 +760,9 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_LAZY_BG		0x0040
 #define EXT2_FEATURE_COMPAT_EXCLUDE_INODE	0x0080
+#ifdef EXT2FS_SNAPSHOT_ON_DISK
+#define EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP	0x0100
+#endif
 
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002

@@ -636,7 +636,7 @@ void e2fsck_pass1(e2fsck_t ctx)
 		return;
 	}
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_BITMAP
-	if (sb->s_feature_compat & EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
+	if (sb->s_feature_compat & EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP)
 		pctx.errcode = ext2fs_allocate_block_bitmap(fs,
 				_("excluded block map"),
 				&ctx->block_excluded_map);

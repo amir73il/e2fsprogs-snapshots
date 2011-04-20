@@ -66,19 +66,6 @@ errcode_t ext2fs_dup_handle(ext2_filsys src, ext2_filsys *dest)
 	memcpy(fs->group_desc, src->group_desc,
 	       (size_t) fs->desc_blocks * fs->blocksize);
 
-#ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
-	if (src->exclude_blks) {
-		retval = ext2fs_get_array(fs->group_desc_count,
-				sizeof(fs->exclude_blks[0]),
-				&fs->exclude_blks);
-		if (retval)
-			goto errout;
-		memcpy(fs->exclude_blks, src->exclude_blks,
-				fs->group_desc_count *
-				sizeof(fs->exclude_blks[0]));
-	}
-
-#endif
 	if (src->inode_map) {
 		retval = ext2fs_copy_bitmap(src->inode_map, &fs->inode_map);
 		if (retval)
