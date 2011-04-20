@@ -1,23 +1,23 @@
 config SNAPSHOT_ON_DISK
-	bool "Next3 on-disk format changes"
+	bool "Snapshots on-disk format changes"
 	help
-	  Next3 uses a few reserved fields and flags in the Ext2 super block,
+	  Snapshots uses a few reserved fields and flags in the Ext2 super block,
 	  and inode structs.
-	  Next3 defines the compatible feature 'exclude_inode', meaning that
-	  the special exclude inode was allocated.
-	  Next3 defines the read-only compatible features 'has_snapshot', meaning
-	  that the file system contains snapshots.
+	  Snapshots require the compatible feature 'exclude_bitmap', meaning that
+	  the exclude bitmap was allocated.
+	  snapshots require the read-only compatible features 'has_snapshot',
+	  meaning that the file system may contain snapshots.
 
 config SNAPSHOT_BIG_JOURNAL
-	bool "Create a big journal for Next3"
+	bool "Create a big journal for COW operations"
 	help
-	  Next3 transactions reserve up to 24 times more credits than Ext3
+	  COW transactions reserve up to 24 times more credits than traditional
 	  transactions for the same operation.  On mke2fs and tune2fs, if the
 	  '-J big' option is used to create a journal, increase the default
 	  journal size by a factor of 24.
 
 config SNAPSHOT_EXCLUDE_INODE
-	bool "Create/check exclude inode for Next3"
+	bool "Create/check the special exclude inode"
 	help
 	  The exclude inode owns all the exclude bitmap blocks.
 	  It is pre-allocated by 'mke2fs/tune2fs -O exclude_inode'.
@@ -35,29 +35,29 @@ config SNAPSHOT_CTL
 config SNAPSHOT_HAS_SNAPSHOT
 	bool "Avoid offline modifications to a file system with snapshots"
 	help
-	  Next3 sets the read-only compatible feature 'has_snapshot',
-	  so the file system could be mounted with Ext3 only in read-only mode
+	  Snapshots require the read-only compatible feature 'has_snapshot',
+	  so the file system will be mounted by old kernels in read-only mode
 	  to protect the snapshots.
 	  Fsck displays a warning about possible corruption of the snapshots
 	  in interactive mode and avoids freeing blocks in preen mode.
 
 config SNAPSHOT_CLEANUP
-	bool "Cleanup Next3 snapshot list when removing has_snapshot feature"
+	bool "Cleanup snapshot list when removing has_snapshot feature"
 	help
 	  Discard all snapshots by 'tune2fs -O ^has_snapshot'.
 	  Snapshot inodes are chained on a list starting at the super block.
 	  Delete all snapshot inodes on the list and reset exclude bitmap.
 
 config SNAPSHOT_EXCLUDE_BITMAP
-	bool "Check Next3 exclude bitmap on fsck"
+	bool "Create/check the exclude bitmap"
 	help
-	  Excluding blocks is done by setting their bit in the exclude bitmap.
-	  There is one exclude bitmap block per block group.  The exclude
-	  bitmap blocks are owned by the special exclude inode.
+	  Excluding snapshot blocks from COW is done by setting their bit in
+	  the exclude bitmap. There is one exclude bitmap block per block group.
+	  Mke2fs allocates the exclude bitmap and it cannot be removed.
 	  Fsck checks that all (and only) snapshot file blocks are excluded.
 
 config SNAPSHOT_CHECK_LIST
-	bool "Check Next3 snapshot list on fsck"
+	bool "Check snapshot list on fsck"
 	help
 	  Check that all inodes on snapshot list are valid snapshots and
 	  prompt to terminate list when bad inode is found.
@@ -77,14 +77,14 @@ config SNAPSHOT_HUGE_SNAPSHOT
 	  Snapshots cannot be enabled on filesytem with block size < 4K.
 
 config SNAPSHOT_MESSAGE_BUFFER
-	bool "Dump Next3 message buffer on fsck"
+	bool "Dump message buffer on fsck"
 	help
-	  Next3 error messages are recorded in a 2K message buffer after the
+	  Error messages are recorded in a message buffer after the
 	  journal super block.  On journal recovery, the journal message buffer
 	  is copied to the file system message buffer.  On fsck, if the message
 	  buffer is not empty, the recorded messages are printed to stdout and
 	  the buffer is cleared.
-	  Next3 supports only block size of 4K, so there is always 2K of free
+	  With a default block size of 4K, there is always 2K of free
 	  space for the message buffer after the 1K super block.
 
 config SNAPSHOT_CTL_OLD
