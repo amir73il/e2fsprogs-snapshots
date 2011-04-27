@@ -372,6 +372,7 @@ errcode_t ext2fs_create_exclude_inode(ext2_filsys fs, int flags)
 		}
 		if (!gd->bg_exclude_bitmap) {
 			gd->bg_exclude_bitmap = data_blk;
+			ext2fs_group_desc_csum_set(fs, grp);
 			gdt_dirty = 1;
 		}
 #ifdef EXCLUDE_INO_PROGRESS
