@@ -710,6 +710,7 @@ case "$1" in
 	  7)
 		echo Shrink snapshots test:
 		echo ---------------------
+		$0 mount 1
 		for f in 5 6 4 3 2 ; do
 			echo 'Deleting snapshot' $f
 			$0 delete $f 2> /dev/null
@@ -720,7 +721,7 @@ case "$1" in
 		echo Merge snapshots test:
 		echo ---------------------
 		$0 umount 1
-		for f in 7 1 8 ; do
+		for f in 7 ; do
 			echo 'Deleting snapshot' $f
 			$0 delete $f 2> /dev/null
 			$0 stat
