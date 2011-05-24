@@ -641,6 +641,9 @@ static void update_feature_set(ext2_filsys fs, char *features)
 #ifdef EXT2FS_SNAPSHOT_EXCLUDE_INODE
 	if (FEATURE_OFF_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
 		remove_exclude_inode(fs);
+		/* clear exclude_bitmap along with exclude_inode */
+		sb->s_feature_compat &=
+			~EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP;
 	}
 
 	if (FEATURE_ON_SAFE(E2P_FEATURE_COMPAT, EXT2_FEATURE_COMPAT_EXCLUDE_INODE)) {
@@ -662,8 +665,10 @@ static void update_feature_set(ext2_filsys fs, char *features)
 			/* reset exclude bitmap blocks */
 			retval = ext2fs_create_exclude_inode(fs, EXCLUDE_RESET);
 			if (retval)
+				/* cleanup bad exclude inode/bitmap */
 				sb->s_feature_compat &=
-					~EXT2_FEATURE_COMPAT_EXCLUDE_INODE;
+					~(EXT2_FEATURE_COMPAT_EXCLUDE_INODE|
+					  EXT2_FEATURE_COMPAT_EXCLUDE_BITMAP);
 		}
 	}
 
