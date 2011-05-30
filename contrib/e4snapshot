@@ -3,14 +3,14 @@
 # NEXT3(R) snapshot management script
 #
 # Written by Amir Goldstein <amir73il@users.sf.net>, 2008
-# Copyright (C) 2008-2010 CTERA Networks
+# Copyright (C) 2008-2011 CTERA Networks
 #
 
 SCRIPT_NAME=$(basename $0)
-SCRIPT_VER=1.0.13-5
-# script name is $FSTYPE ot snapshot.$FSTYPE
+SCRIPT_VER=1.0.13-7
+# script name is $FSTYPE or e4snapshot or snapshot.$FSTYPE
 FSTYPE=$(echo $SCRIPT_NAME | ( IFS=$IFS. ; read a b ; if [ $a = "snapshot" ] ; then echo $b ; else echo $a ; fi ) )
-if [ -z $FSTYPE ] ; then
+if [ -z $FSTYPE ] || [ $FSTYPE = "e4snapshot" ] ; then
 	# deafult to ext4
 	FSTYPE=ext4
 fi
