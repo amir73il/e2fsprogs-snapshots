@@ -14,5 +14,4 @@ install -T misc/chattr /sbin/chattr.ext4dev
 install -T misc/lsattr /sbin/lssnap
 install -T misc/chattr /sbin/chsnap
 install -T resize/resize2fs /sbin/resize.ext4dev
-# next3 script is generic and chooses the FS type by it's own name
-install -T next3 /sbin/ext4dev
+install -T contrib/e4snapshot /sbin/snapshot.ext4dev

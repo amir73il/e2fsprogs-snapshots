@@ -12,5 +12,5 @@ install -T misc/dumpe2fs /sbin/dumpfs.next3
 install -T misc/lsattr /sbin/lsattr.next3
 install -T misc/chattr /sbin/chattr.next3
 install -T resize/resize2fs /sbin/resize.next3
-install -T next3 /sbin/next3
+install -T contrib/e4snapshot /sbin/snapshot.next3
 
