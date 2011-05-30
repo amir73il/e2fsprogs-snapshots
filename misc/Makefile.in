@@ -415,6 +415,12 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
 		(cd $(DESTDIR)$(root_sbindir); \
 		$(LN) $(LINK_INSTALL_FLAGS) tune2fs $(FINDFS_LINK)); \
 	fi
+	$(Q) (cd $(DESTDIR)$(root_sbindir); \
+		$(LN) $(LINK_INSTALL_FLAGS) lsattr lssnap)
+	$(Q) (cd $(DESTDIR)$(root_sbindir); \
+		$(LN) $(LINK_INSTALL_FLAGS) chattr chsnap)
+	$(Q) $(INSTALL_PROGRAM) ../contrib/e4snapshot \
+		$(DESTDIR)$(root_sbindir)/e4snapshot
 	$(Q) for i in $(UPROGS); do \
 		echo "	INSTALL $(bindir)/$$i"; \
 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(bindir)/$$i; \
@@ -517,7 +523,7 @@ uninstall:
 	for i in $(UMANPAGES); do \
 		$(RM) -f $(DESTDIR)$(man1dir)/$$i; \
 	done
-	for i in $(FINDFS_LINK) e2label ; do \
+	for i in $(FINDFS_LINK) e2label lssnap chsnap e4snapshot ; do \
 		$(RM) -f $(DESTDIR)$(root_sbindir)/$$i; \
 	done
 	for i in $(FMANPAGES); do \
