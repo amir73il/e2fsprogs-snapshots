@@ -8,9 +8,13 @@
 
 SCRIPT_NAME=$(basename $0)
 SCRIPT_VER=1.0.13-5
+# script name is $FSTYPE ot snapshot.$FSTYPE
+FSTYPE=$(echo $SCRIPT_NAME | ( IFS=$IFS. ; read a b ; if [ $a = "snapshot" ] ; then echo $b ; else echo $a ; fi ) )
+if [ -z $FSTYPE ] ; then
+	# deafult to ext4
+	FSTYPE=ext4
+fi
 SCRIPT_DESC="$FSTYPE snapshot management script"
-# fs/module name = script name
-FSTYPE=$SCRIPT_NAME
 
 # generic e2fs progs
 FSCK=e2fsck
