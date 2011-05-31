@@ -461,11 +461,11 @@ case "$1" in
 		done
 		# umount $FSTYPE filesystem 
 		# we may be called from umount.$FSTYPE so add -i
-		umount -i -d $MNTOPT $ROOTMNT || exit 1
+		umount -i $MNTOPT $ROOTMNT || exit 1
 		echo $FSTYPE filesystem was unmounted
 	else
 		if [ -d $SNAPMNT$s ] ; then
-			umount -d $SNAPMNT$s || exit 1
+			umount $SNAPMNT$s || exit 1
 			rmdir $SNAPMNT$s
 		fi
   		$0 disable $s
