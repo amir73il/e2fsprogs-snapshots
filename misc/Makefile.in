@@ -415,12 +415,6 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
 		(cd $(DESTDIR)$(root_sbindir); \
 		$(LN) $(LINK_INSTALL_FLAGS) tune2fs $(FINDFS_LINK)); \
 	fi
-	$(Q) (cd $(DESTDIR)$(root_sbindir); \
-		$(LN) $(LINK_INSTALL_FLAGS) lsattr lssnap)
-	$(Q) (cd $(DESTDIR)$(root_sbindir); \
-		$(LN) $(LINK_INSTALL_FLAGS) chattr chsnap)
-	$(Q) $(INSTALL_PROGRAM) ../contrib/e4snapshot \
-		$(DESTDIR)$(root_sbindir)/e4snapshot
 	$(Q) for i in $(UPROGS); do \
 		echo "	INSTALL $(bindir)/$$i"; \
 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(bindir)/$$i; \
@@ -429,6 +423,12 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
 		echo "	INSTALL $(libdir)/$$i"; \
 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(libdir)/$$i; \
 	done
+	$(Q) $(INSTALL_PROGRAM) lsattr \
+		$(DESTDIR)$(root_sbindir)/lssnap
+	$(Q) $(INSTALL_PROGRAM) chattr \
+		$(DESTDIR)$(root_sbindir)/chsnap
+	$(Q) $(INSTALL_PROGRAM) ../contrib/e4snapshot \
+		$(DESTDIR)$(root_sbindir)/e4snapshot
 	$(Q) for i in $(SMANPAGES); do \
 		for j in $(COMPRESS_EXT); do \
 			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
