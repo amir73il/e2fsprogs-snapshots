@@ -427,7 +427,7 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
 		$(DESTDIR)$(root_sbindir)/lssnap
 	$(Q) $(INSTALL_PROGRAM) chattr \
 		$(DESTDIR)$(root_sbindir)/chsnap
-	$(Q) $(INSTALL_PROGRAM) ../contrib/e4snapshot \
+	$(Q) $(INSTALL_PROGRAM) $(srcdir)/../contrib/e4snapshot \
 		$(DESTDIR)$(root_sbindir)/e4snapshot
 	$(Q) for i in $(SMANPAGES); do \
 		for j in $(COMPRESS_EXT); do \
