@@ -732,7 +732,7 @@ static void e2fsck_print_message_buffer(e2fsck_t ctx)
 	/* print messages in buffer */
 	puts("Error messages recorded in message buffer:");
 	while (offset < len && buf[offset]) {
-		fputs(buf+offset, stdout);
+		puts(buf+offset);
 		offset += MSGLEN;
 	}
 	puts("End of message buffer.");
