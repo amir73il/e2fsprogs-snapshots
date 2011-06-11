@@ -103,7 +103,7 @@ static errcode_t write_journal_file(ext2_filsys fs, char *filename,
 	/* Open the device or journal file */
 	if ((fd = open(filename, O_WRONLY)) < 0) {
 		retval = errno;
-		goto errout;
+		goto errfree;
 	}
 
 	/* Write the superblock out */
@@ -117,6 +117,9 @@ static errcode_t write_journal_file(ext2_filsys fs, char *filename,
 		goto errout;
 	memset(buf, 0, fs->blocksize);
 
+	if (flags & EXT2_MKJOURNAL_LAZYINIT)
+		goto success;
+
 	for (i = 1; i < size; i++) {
 		ret_size = write(fd, buf, fs->blocksize);
 		if (ret_size < 0) {
@@ -126,10 +129,12 @@ static errcode_t write_journal_file(ext2_filsys fs, char *filename,
 		if (ret_size != (int) fs->blocksize)
 			goto errout;
 	}
-	close(fd);
 
+success:
 	retval = 0;
 errout:
+	close(fd);
+errfree:
 	ext2fs_free_mem(&buf);
 	return retval;
 }
@@ -201,6 +206,7 @@ struct mkjournal_struct {
 	blk_t		goal;
 	blk_t		blk_to_zero;
 	int		zero_count;
+	int		flags;
 	char		*buf;
 	errcode_t	err;
 };
@@ -232,7 +238,7 @@ static int mkjournal_proc(ext2_filsys	fs,
 	retval = 0;
 	if (blockcnt <= 0)
 		retval = io_channel_write_blk(fs->io, new_blk, 1, es->buf);
-	else {
+	else if (!(es->flags & EXT2_MKJOURNAL_LAZYINIT)) {
 		if (es->zero_count) {
 			if ((es->blk_to_zero + es->zero_count == new_blk) &&
 			    (es->zero_count < 1024))
@@ -296,6 +302,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
 	es.newblocks = 0;
 	es.buf = buf;
 	es.err = 0;
+	es.flags = flags;
 	es.zero_count = 0;
 
 	if (fs->super->s_feature_incompat & EXT3_FEATURE_INCOMPAT_EXTENTS) {
@@ -532,6 +539,13 @@ errcode_t ext2fs_add_journal_inode(ext2_filsys fs, blk_t size, int flags)
 		/* Create the journal file */
 		if ((fd = open(jfile, O_CREAT|O_WRONLY, 0600)) < 0)
 			return errno;
+
+		/* Note that we can't do lazy journal initialization for mounted
+		 * filesystems, since the zero writing is also allocating the
+		 * journal blocks.  We could use fallocate, but not all kernels
+		 * support that, and creating a journal on a mounted ext2
+		 * filesystems is extremely rare these days...  Ignore it. */
+		flags &= ~EXT2_MKJOURNAL_LAZYINIT;
 
 		if ((retval = write_journal_file(fs, jfile, size, flags)))
 			goto errout;
