@@ -682,10 +682,10 @@ static void update_feature_set(ext2_filsys fs, char *features)
 		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
 			/* update 'big_journal' flag */
 			big_journal = (ext2fs_check_journal_size(fs) >=
-					NEXT3_MIN_JOURNAL_BLOCKS);
+					EXT4_BIG_JOURNAL_BLOCKS);
 		} else if (!journal_size || journal_size == -1) {
-			/* Create a big journal for Next3 */
-			journal_size = -NEXT3_MAX_COW_CREDITS;
+			/* Create a big journal for snapshots */
+			journal_size = -EXT4_MAX_COW_CREDITS;
 			big_journal = 1;
 		}
 	

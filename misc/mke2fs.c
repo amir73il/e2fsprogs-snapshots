@@ -1298,7 +1298,7 @@ static void PRS(int argc, char *argv[])
 		if (!strcmp(program_name, "mkfs.next3") ||
 		    !strcmp(program_name, "mkfs.next4")) {
 			/* 1. create a big journal */
-			journal_size = -NEXT3_MAX_COW_CREDITS;
+			journal_size = -EXT4_MAX_COW_CREDITS;
 			/* 2. use system page size as block size */
 			blocksize = sys_page_size;
 			fs_param.s_log_block_size =
