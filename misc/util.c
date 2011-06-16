@@ -224,8 +224,8 @@ void parse_journal_opts(const char *opts)
 				journal_usage++;
 #ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 		} else if (strcmp(token, "big") == 0) {
-			/* Create a big journal for Next3 */
-			journal_size = -NEXT3_MAX_COW_CREDITS;
+			/* Create a big journal for snapshots */
+			journal_size = -EXT4_MAX_COW_CREDITS;
 			continue;
 		} else if (strcmp(token, "bigger") == 0) {
 			/* Create a journal bigger than default */

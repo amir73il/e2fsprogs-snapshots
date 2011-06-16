@@ -728,15 +728,14 @@ struct ext2_super_block {
 
 #ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 /*
- * A Next3 'big' journal needs to accomodate extra snapshot COW credits.
- * Default journal size accomodates maximum possible COW credits.
- * Minimum required journal size accomodates the avarage COW credits.
+ * A 'big' journal needs to accomodate extra snapshot COW credits.
+ * On mke2fs -O snapshots, we create a journal to hold maximum COW credits.
+ * On tune2fs -O snapshots, we check if journal can hold average COW credits.
  */
 #define EXT3_DEF_JOURNAL_BLOCKS		32768
-#define NEXT3_AVG_COW_CREDITS		16
-#define NEXT3_MAX_COW_CREDITS		24
-#define NEXT3_MIN_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_AVG_COW_CREDITS)
-#define NEXT3_DEF_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS*NEXT3_MAX_COW_CREDITS)
+#define EXT4_AVG_COW_CREDITS		16
+#define EXT4_MAX_COW_CREDITS		24
+#define EXT4_BIG_JOURNAL_BLOCKS	(EXT3_DEF_JOURNAL_BLOCKS * EXT4_AVG_COW_CREDITS)
 
 #endif
 /*
