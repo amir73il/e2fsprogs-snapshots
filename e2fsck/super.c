@@ -1043,7 +1043,7 @@ void check_super_block(e2fsck_t ctx)
 	 * Check to see if we should disable the test_fs flag
 	 */
 	profile_get_boolean(ctx->profile, "options",
-			    "clear_test_fs_flag", 0, 1,
+			    "clear_test_fs_flag", 0, 0,
 			    &clear_test_fs_flag);
 	if (!(ctx->options & E2F_OPT_READONLY) &&
 	    clear_test_fs_flag &&
