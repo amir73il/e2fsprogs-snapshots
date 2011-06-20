@@ -32,7 +32,7 @@ SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
 FMANPAGES=	mke2fs.conf.5
 
 UPROGS=		chattr lsattr @UUID_CMT@ uuidgen
-UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
+UMANPAGES=	chattr.1 lsattr.1 chsnap.1 lssnap.1 @UUID_CMT@ uuidgen.1
 
 LPROGS=		@E2INITRD_PROG@
 
@@ -369,6 +369,14 @@ chattr.1: $(DEP_SUBSTITUTE) $(srcdir)/chattr.1.in
 lsattr.1: $(DEP_SUBSTITUTE) $(srcdir)/lsattr.1.in 
 	$(E) "	SUBST $@"
 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/lsattr.1.in lsattr.1 
+
+chsnap.1: $(DEP_SUBSTITUTE) $(srcdir)/chsnap.1.in
+	$(E) "	SUBST $@"
+	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/chsnap.1.in chsnap.1 
+
+lssnap.1: $(DEP_SUBSTITUTE) $(srcdir)/lssnap.1.in 
+	$(E) "	SUBST $@"
+	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/lssnap.1.in lssnap.1 
 
 uuidgen.1: $(DEP_SUBSTITUTE) $(srcdir)/uuidgen.1.in 
 	$(E) "	SUBST $@"

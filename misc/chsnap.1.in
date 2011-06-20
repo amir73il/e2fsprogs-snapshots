@@ -1,0 +1,99 @@
+.\" -*- nroff -*-
+.TH CHSNAP 1 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
+.SH NAME
+chsnap \- change snapshot file attributes on a Linux fourth extended file system
+.SH SYNOPSIS
+.B chsnap
+[
+.B \-RVf
+]
+[
+.B \-v
+.I version
+]
+[
+.I mode
+]
+.I files...
+.SH DESCRIPTION
+.B chsnap
+changes the snapshot file attributes on a Linux fourth extended file system.
+.PP
+The format of a symbolic mode is +-=[Sn].
+.PP
+The operator `+' causes the selected attributes to be added to the
+existing attributes of the files; `-' causes them to be removed; and
+`=' causes them to be the only attributes that the files have.
+.PP
+The letters `Sn' select the new attributes for the files:
+on snapshot list (S) and mount access enabled (n).
+.PP
+The following attributes are read-only, and may be listed by
+.BR lssnap (1)
+but not modified by chsnap: 
+active (a), in use by previous snapshot (p), request to be removed from the
+list (s), shrunk (h), open for read (o) and tagged (t).
+.SH OPTIONS
+.TP
+.B \-R
+Recursively change attributes of snapshot directories and their contents.
+.TP
+.B \-V
+Be verbose with chsnap's output and print the program version.
+.TP
+.B \-f
+Suppress most error messages.
+.TP
+.BI \-v " version"
+Set the snapshot file's version/generation number.
+.SH ATTRIBUTES
+A snapshot file with the 'S' attribute set is on the snapshot list.
+Setting the attribute on a new snapshot file means requesting to add it
+to the head of the list (i.e. snapshot take).
+Resetting the attribute on a snapshot file means requesting to remove it
+from the list (i.e. snapshot delete).
+.PP
+A snapshot file with the 'n' attribute set can be mounted via a loop device.
+The snapshot file's size is the size of the snapshot'ed file system.
+.PP
+The 'a' attribute indicates the active snapshot, which is the last snapshot
+taken.
+.PP
+The 'p' attribute indicates that the snapshot file is in use by a previous
+snapshot, which means that an older snapshot is enabled for mount.
+.PP
+The 's' attribute indicates that the snapshot was deleted.  It may not have
+been removed from the list yet, but it cannot be mounted anymore and it will
+be removed from the list as soon as no older snapshots depend on it.
+.PP
+The 'h' attribute indicates that the snapshot was deleted and shrunk.
+Shrinking a snapshot file means freeing blocks, which are not referenced
+by older snapshots.
+.PP
+The 'o' attribute indicates that the snapshot is open for read, mostly used
+as indication that the snapshot is mounted via a loop device.
+.PP
+The 't' attribute indicates that the snapshot is tagged.  This attribute is
+reserved for future use and has no special meaning at the moment.
+.PP
+.SH AUTHOR
+.B chsnap
+was copied from
+.B chattr
+by Amir Goldstein <amir73il@users.sf.net>.
+.B chattr
+was written by Remy Card <Remy.Card@linux.org>.  It is currently being
+maintained by Theodore Ts'o <tytso@alum.mit.edu>.
+.SH BUGS AND LIMITATIONS
+The snapshot file attributes can only be set on snapshot files, which are
+files created inside a snapshots directory.
+A snapshots directory is indicated by setting the 'x' flag via
+.BR chattr (1).
+Snapshot file are only supported by the ext4 filesystem when the experimental
+snapshot support feature is enabled.
+.SH AVAILABILITY
+.B chsnap
+is part of the e2fsprogs package and is available from
+http://e2fsprogs.sourceforge.net.
+.SH SEE ALSO
+.BR lssnap (1)
