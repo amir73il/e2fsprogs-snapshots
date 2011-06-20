@@ -225,6 +225,26 @@ install: $(PROGS) $(MANPAGES) $(FMANPAGES) installdirs
 		(cd $(DESTDIR)$(man8dir); \
 			$(LN) $(LINK_INSTALL_FLAGS) e2fsck.8 fsck.$$i.8); \
 	done
+	$(Q) if test -f $(DESTDIR)$(root_sysconfdir)/e2fsck.conf; then \
+		if cmp -s $(DESTDIR)$(root_sysconfdir)/e2fsck.conf \
+			$(srcdir)/e2fsck.conf; then \
+			true; \
+		else \
+			echo "	INSTALL_DATA $(root_sysconfdir)/e2fsck.conf"; \
+			mv $(DESTDIR)$(root_sysconfdir)/e2fsck.conf \
+			   $(DESTDIR)$(root_sysconfdir)/e2fsck.conf.e2fsprogs-old; \
+			$(INSTALL_DATA) $(srcdir)/e2fsck.conf \
+				$(DESTDIR)$(root_sysconfdir)/e2fsck.conf; \
+			echo "Your e2fsck.conf is too old.  Backing up old version in"; \
+			echo "$(DESTDIR)$(root_sysconfdir)/e2fsck.conf.e2fsprogs-old.  Please check to see"; \
+			echo "if you have any local customizations that you wish to preserve."; \
+			echo " "; \
+		fi; \
+	else \
+		echo "	INSTALL_DATA $(root_sysconfdir)/e2fsck.conf"; \
+		$(INSTALL_DATA) $(srcdir)/e2fsck.conf \
+			$(DESTDIR)$(root_sysconfdir)/e2fsck.conf; \
+	fi
 
 install-strip: install
 	$(Q) for i in $(PROGS); do \
@@ -250,6 +270,9 @@ uninstall:
 			$(DESTDIR)$(root_sbindir)/fsck.ext3 \
 			$(DESTDIR)$(root_sbindir)/fsck.ext4 \
 			$(DESTDIR)$(root_sbindir)/fsck.ext4dev
+	if cmp -s $(srcdir)/e2fsck.conf $(DESTDIR)/$(root_sysconfdir)/e2fsck.conf; then \
+		$(RM) $(DESTDIR)/$(root_sysconfdir)/e2fsck.conf; \
+	fi
 
 clean:
 	$(RM) -f $(PROGS) \#* *\# *.s *.o *.a *~ core e2fsck.static \
