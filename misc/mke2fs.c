@@ -1294,9 +1294,10 @@ static void PRS(int argc, char *argv[])
 			journal_size = -1;
 #ifdef EXT2FS_SNAPSHOT_BIG_JOURNAL
 		
-		/* If called as mkfs.next3/next4: */
+		/* If called as mkfs.next3/next4/ext4dev: */
 		if (!strcmp(program_name, "mkfs.next3") ||
-		    !strcmp(program_name, "mkfs.next4")) {
+			!strcmp(program_name, "mkfs.next4") ||
+			!strcmp(program_name, "mkfs.ext4dev")) {
 			/* 1. create a big journal */
 			journal_size = -EXT4_MAX_COW_CREDITS;
 			/* 2. use system page size as block size */
