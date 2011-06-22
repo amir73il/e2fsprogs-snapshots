@@ -53,7 +53,7 @@ done
 
 if [ $# -ge 2 ] && [ $1 != help ] && [ $1_$2 != $1_help ] && [ $1 != config ] && \
 	[ $1 != version ] && [ $1 != debug ] && [ $1 != delay ] && [ _$1 != _test ] && [ $1 != tests ] ; then
-	# parse [[next-mount@]snapshot-name] or $FSTYPE-mount or $FSTYPE-device argument
+	# parse [[$FSTYPE-mount@]snapshot-name] or $FSTYPE-mount or $FSTYPE-device argument
 	s=$( echo $2 | ( IFS=$IFS@ ; read a b ; echo $b ) )
 	if [ -z $s ] ; then
 		# check if argument is a $FSTYPE mount point
@@ -230,7 +230,7 @@ case "$1" in
 # $FSTYPE filesystem commands
   config)
 	if [ $1_$2 = $1_help ] ; then
-		echo "$1: configure or print default next filesystem parameters."
+		echo "$1: configure or print default $FSTYPE filesystem parameters."
 		echo "creates configuration file $CONFFILE in current directory."
 		echo "usage: $SCRIPT_NAME config [$FSTYPE-device $FSTYPE-mount]"
 		exit 0
@@ -290,7 +290,7 @@ case "$1" in
 		echo "stat: display status of $FSTYPE filesystem and all its snapshots."
 		echo "snapshot attributes are displayed in short format. to display"
 		echo "attributes in long format use the '$0 lsattr' command."
-		echo "usage: $SCRIPT_NAME stat [next-mount]"
+		echo "usage: $SCRIPT_NAME stat [$FSTYPE-mount]"
 		exit 0
 	fi
 	echo "Mounted $FSTYPE filesystem and snapshots:"
@@ -321,7 +321,7 @@ case "$1" in
   take)
 	if [ $1_$2 = $1_help ] ; then
 		echo "take: take a snapshot."
-		echo "usage: $SCRIPT_NAME take [[next-mount@]snapshot-name] (default=$FSTYPE-mount@GMT-date)"
+		echo "usage: $SCRIPT_NAME take [[$FSTYPE-mount@]snapshot-name] (default=$FSTYPE-mount@GMT-date)"
 		exit 0
 	fi
 	mkdir -p $SNAPDIR || exit 1
@@ -346,7 +346,7 @@ case "$1" in
 		echo "delete: umount a snapshot and mark it for deletion."
 		echo "any non-mounted snapshot can be marked for deletion"
 		echo "but some snapshot deletion is deferred to later time."
-		echo "usage: $SCRIPT_NAME delete [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME delete [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $s ] ; then
@@ -365,7 +365,7 @@ case "$1" in
 		echo "remove: delete a snapshot permanently."
 		echo "this command will fail for active snapshot and snapshots"
 		echo "in use by older snapshots. try using the delete command."
-		echo "usage: $SCRIPT_NAME remove [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME remove [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $2 ] ; then
@@ -382,7 +382,7 @@ case "$1" in
   enable)
 	if [ $1_$2 = $1_help ] ; then
 		echo "enable: enable access to snapshot file."
-		echo "usage: $SCRIPT_NAME enable [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME enable [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $2 ] ; then
@@ -398,7 +398,7 @@ case "$1" in
   disable)
 	if [ $1_$2 = $1_help ] ; then
 		echo "disable: disable access to snapshot file."
-		echo "usage: $SCRIPT_NAME disable [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME disable [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $2 ] ; then
@@ -421,7 +421,7 @@ case "$1" in
 	if [ $1_$2 = $1_help ] ; then
 		echo "mount: mount a snapshot."
 		echo "usage: $SCRIPT_NAME mount [$FSTYPE-device $FSTYPE-mount]"
-		echo "usage: $SCRIPT_NAME mount [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME mount [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $s ] ; then
@@ -430,7 +430,7 @@ case "$1" in
 		# uncomment to enable delayed allocation 
 		#MNTOPT="$MNTOPT,nodelalloc"
 		if [ ! -z $ROOTDEV ] && [ -f $ROOTDEV ] ; then
-			MNTOPT="$MNTOPT,loop"
+			MNTOPT="$MNTOPT,loop,noinit_itable"
 		fi
 		# we may be called from mount.$FSTYPE so add -i
 		mount -t $FSTYPE -i $MNTOPT $ROOTDEV $ROOTMNT || exit 1
@@ -451,7 +451,7 @@ case "$1" in
 	if [ $1_$2 = $1_help ] ; then
 		echo "umount: umount a snapshot."
 		echo "usage: $SCRIPT_NAME umount [$FSTYPE-mount]"
-		echo "usage: $SCRIPT_NAME umount [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME umount [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $s ] ; then
@@ -478,7 +478,7 @@ case "$1" in
   dump)
 	if [ $1_$2 = $1_help ] ; then
 		echo "dump: print a map of a snapshot file to kernel ring buffer."
-		echo "usage: $SCRIPT_NAME dump [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME dump [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $2 ] ; then
@@ -497,8 +497,8 @@ case "$1" in
   fsck)
 	if [ $1_$2 = $1_help ] ; then
 		echo "fsck: run fsck on a snapshot or $FSTYPE filesystem."
-		echo "usage: $SCRIPT_NAME fsck [next-device]"
-		echo "usage: $SCRIPT_NAME fsck [next-mount@]<snapshot-name>"
+		echo "usage: $SCRIPT_NAME fsck [$FSTYPE-device]"
+		echo "usage: $SCRIPT_NAME fsck [$FSTYPE-mount@]<snapshot-name>"
 		exit 0
 	fi
 	if [ -z $s ] ; then
@@ -542,7 +542,7 @@ case "$1" in
   lstest)
 	if [ $1_$2 = $1_help ] ; then
 		echo "lstest: list the content of test files in a snapshot or $FSTYPE filesystem."
-		echo "usage: $SCRIPT_NAME lstest [[next-mount@]snapshot-name] (default=$FSTYPE-mount)"
+		echo "usage: $SCRIPT_NAME lstest [[$FSTYPE-mount@]snapshot-name] (default=$FSTYPE-mount)"
 		exit 0
 	fi
 	if [ -z $s ] ; then
@@ -748,8 +748,8 @@ case "$1" in
 	echo "usage: $SCRIPT_NAME {stat|umount} [$FSTYPE-mount]"
 	echo
 	echo "$FSTYPE snapshot commands:"
-	echo "usage: $SCRIPT_NAME take [[next-mount@]snapshot-name] (default=next-mount@GMT-date)"
-	echo "usage: $SCRIPT_NAME {mount|umount|delete|remove|fsck|dump} [next-mount@]<snapshot-name>"
+	echo "usage: $SCRIPT_NAME take [[$FSTYPE-mount@]snapshot-name] (default=$FSTYPE-mount@GMT-date)"
+	echo "usage: $SCRIPT_NAME {mount|umount|delete|remove|fsck|dump} [$FSTYPE-mount@]<snapshot-name>"
 	echo
 	echo "<snapshot-name> parameter may be just the name of the snapshot or may be"
 	echo "given in ZFS style of <$FSTYPE-mount>@<snapshot-name>."
