@@ -8,7 +8,7 @@ e2fsck \- check a Linux ext2/ext3/ext4 file system
 .SH SYNOPSIS
 .B e2fsck
 [
-.B \-pacnyrdfkvtDFV
+.B \-pacnyrdfkvtxDFV
 ]
 [
 .B \-b
@@ -189,7 +189,6 @@ be 1 or 2.  The default extended attribute version format is 2.
 .BI fragcheck
 During pass 1, print a detailed report of any discontiguous blocks for
 files in the filesystem.
-.RE
 .TP
 .B \-f
 Force checking even if the file system seems clean.
@@ -302,6 +301,16 @@ may not be specified at the same time as the
 or
 .B \-p
 options.
+.TP
+.B \-x
+Delete all snapshots before repairing the filesystem.  Unless
+.B e2fsck
+is run in preen mode, it may modify the filesystem in a way that will
+corrupt ext4 snapshots. So when ext4 snapshots exists and the filesystem
+could not be repaired in preen mode, using this option is recommended.
+This option may not be specified at the same time as the 
+.B \-n
+option.
 .SH EXIT CODE
 The exit code returned by
 .B e2fsck

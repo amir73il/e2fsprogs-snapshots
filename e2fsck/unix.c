@@ -97,7 +97,7 @@ static void usage(e2fsck_t ctx)
 		" -l bad_blocks_file   Add to badblocks list\n"
 		" -L bad_blocks_file   Set badblocks list\n"
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
-		" -x                   Fix or discard snapshots\n"
+		" -x                   Delete all snapshots\n"
 #endif
 		));
 
@@ -795,7 +795,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
 			break;
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 		case 'x':
-			ctx->options |= E2F_OPT_FIX_SNAPSHOT;
+			ctx->options |= E2F_OPT_CLEAR_SNAPSHOTS;
 			break;
 #endif
 		default:
