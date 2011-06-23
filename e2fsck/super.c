@@ -557,7 +557,7 @@ static int check_snapshot_list(e2fsck_t ctx)
 				continue;
 			}
 			clear_problem_context(&pctx);
-			if (!fix_problem(ctx, PR_0_BAD_SNAPSHOT, &pctx))
+			if (!fix_problem(ctx, PR_0_BAD_SNAPSHOT_LIST, &pctx))
 				break;
 
 			/* disconnect inode from snapshot list */
@@ -596,37 +596,42 @@ void check_snapshots(e2fsck_t ctx)
 {
 	struct ext2_super_block *sb = ctx->fs->super;
 	struct problem_context	pctx;
-	int cont;
+	int cont, clear_snapshots = 0;
 
 	if (!(sb->s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_HAS_SNAPSHOT))
 		/* no snapshots */
 		return;
 
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
-	if ((ctx->options & E2F_OPT_FIX_SNAPSHOT) ||
-			(sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT)) {
+	clear_problem_context(&pctx);
+	if (ctx->options & E2F_OPT_CLEAR_SNAPSHOTS) {
+		if (fix_problem(ctx, PR_0_CLEAR_SNAPSHOTS, &pctx))
+			clear_snapshots = 1;
+		/* don't ask again after pass1 restart */
+		ctx->options &= ~E2F_OPT_CLEAR_SNAPSHOTS;
+	}
+	else if (sb->s_flags & EXT2_FLAGS_FIX_SNAPSHOT) {
 		/* corrupted snapshot need to be fixed */
-		clear_problem_context(&pctx);
-		if (fix_problem(ctx, PR_0_FIX_SNAPSHOT, &pctx)) {
-			if (sb->s_snapshot_list || sb->s_snapshot_inum ||
+		if (fix_problem(ctx, PR_0_BAD_SNAPSHOT, &pctx))
+			clear_snapshots = 1;
+	}
+	if (clear_snapshots) {
+		if (sb->s_snapshot_list || sb->s_snapshot_inum ||
 				(sb->s_flags & (EXT2_FLAGS_FIX_SNAPSHOT |
 						EXT2_FLAGS_IS_SNAPSHOT))) {
-				/* reset snapshot list head */
-				sb->s_snapshot_list = sb->s_snapshot_inum = 0;
-				sb->s_flags &= ~(EXT2_FLAGS_FIX_SNAPSHOT |
-						 EXT2_FLAGS_IS_SNAPSHOT);
-				ext2fs_mark_super_dirty(ctx->fs);
-			}
-			/* don't ask again after pass1 */
-			ctx->options &= ~E2F_OPT_FIX_SNAPSHOT;
-			/* clear all snapshot inodes (in pass1) */
-			ctx->flags |= E2F_FLAG_CLEAR_SNAPSHOTS;
-			if (sb->s_feature_compat &
-					EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
-				/* and reset exclude bitmap */
-				ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
-			return;
+			/* reset snapshot list head */
+			sb->s_snapshot_list = sb->s_snapshot_inum = 0;
+			sb->s_flags &= ~(EXT2_FLAGS_FIX_SNAPSHOT |
+					EXT2_FLAGS_IS_SNAPSHOT);
+			ext2fs_mark_super_dirty(ctx->fs);
 		}
+		/* clear all snapshot inodes (in pass1) */
+		ctx->flags |= E2F_FLAG_CLEAR_SNAPSHOTS;
+		if (sb->s_feature_compat &
+				EXT2_FEATURE_COMPAT_EXCLUDE_INODE)
+			/* and reset exclude bitmap */
+			ctx->flags |= E2F_FLAG_EXCLUDE_INODE;
+		return;
 	}
 
 #endif

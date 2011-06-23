@@ -240,12 +240,15 @@ struct problem_context {
 #endif
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 /* Bas snapshot on list */
-#define PR_0_BAD_SNAPSHOT			0x000102
+#define PR_0_BAD_SNAPSHOT_LIST			0x000102
 
 #endif
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 /* Corrupted snapshot */
-#define PR_0_FIX_SNAPSHOT			0x000103
+#define PR_0_BAD_SNAPSHOT			0x000103
+
+/* Clear all snapshots */
+#define PR_0_CLEAR_SNAPSHOTS			0x000104
 
 #endif
 

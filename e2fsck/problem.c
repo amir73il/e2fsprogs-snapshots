@@ -43,7 +43,7 @@
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 #define PROMPT_TERMINATE_LIST 20
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
-#define PROMPT_DISCARD_SNAPSHOTS 21
+#define PROMPT_CLEAR_SNAPSHOTS 21
 #endif
 #define PROMPT_NULL	22
 #else
@@ -78,7 +78,7 @@ static const char *prompt[] = {
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 	N_("Terminate list"),	/* 20 */
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
-	N_("Discard snapshots"),/* 21 */
+	N_("Clear all snapshots"),/* 21 */
 #endif
 	"",			/* 22 */
 #else
@@ -111,7 +111,15 @@ static const char *preen_msg[] = {
 	N_("UNLINKED"),		/* 17 */
 	N_("HTREE INDEX CLEARED"),/* 18 */
 	N_("WILL RECREATE"),	/* 19 */
+#ifdef EXT2FS_SNAPSHOT_CHECK_LIST
+	N_("LIST TERMINATED"),	/* 20 */
+#ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
+	N_("SNAPSHOTS CLEARED"),/* 21 */
+#endif
+	"",			/* 22 */
+#else
 	"",			/* 20 */
+#endif
 };
 
 static struct e2fsck_problem problem_table[] = {
@@ -362,17 +370,22 @@ static struct e2fsck_problem problem_table[] = {
 #endif
 #ifdef EXT2FS_SNAPSHOT_CHECK_LIST
 	/* Bad snapshot on list */
-	{ PR_0_BAD_SNAPSHOT,
+	{ PR_0_BAD_SNAPSHOT_LIST,
 	  N_("Bad @i found on snapshot list.  "),
 	  PROMPT_TERMINATE_LIST, PR_PREEN_OK },
 
 #endif
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
 	/* Corrupted snapshot */
-	{ PR_0_FIX_SNAPSHOT,
+	{ PR_0_BAD_SNAPSHOT,
 	  N_("@f may contain corrupted snapshots.\n"
 	     "This version of e2fsck does not support fixing snapshots.\n"),
-	  PROMPT_DISCARD_SNAPSHOTS, 0 },
+	  PROMPT_CLEAR_SNAPSHOTS, 0 },
+
+	/* Clear all snapshots */
+	{ PR_0_CLEAR_SNAPSHOTS,
+	  N_("Snapshots may be damaged by repair.  "),
+	  PROMPT_CLEAR_SNAPSHOTS, PR_PREEN_OK },
 
 #endif
 	/* Last mount time is in the future */
