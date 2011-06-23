@@ -157,7 +157,7 @@ struct resource_track {
 #define E2F_OPT_FRAGCHECK	0x0800
 #define E2F_OPT_JOURNAL_ONLY	0x1000 /* only replay the journal */
 #ifdef EXT2FS_SNAPSHOT_FIX_SNAPSHOT
-#define E2F_OPT_FIX_SNAPSHOT	0x2000
+#define E2F_OPT_CLEAR_SNAPSHOTS	0x2000
 #endif
 
 /*
